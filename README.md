@@ -1,17 +1,57 @@
-# api_quota_helper
+# API 额度查询助手
 
-A new Flutter project.
+一个用于查询 API 套餐额度的小米手机应用，支持桌面小组件展示。
 
-## Getting Started
+## 功能特性
 
-This project is a starting point for a Flutter application.
+- 🔐 **账户管理** - 支持添加、编辑、删除多个 API 账户
+- 🌐 **自定义接口** - 支持配置任意 API 查询接口
+- 🌙 **暗黑主题** - 支持亮色/暗黑主题切换
+- 📊 **额度查询** - 实时查询套餐额度、剩余时间、使用进度
+- 📱 **桌面小组件** - 支持小/中/大三种尺寸的桌面小组件
+- 🔄 **自动刷新** - 随时手动刷新查看最新数据
 
-A few resources to get you started if this is your first Flutter project:
+## 支持的查询内容
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- 套餐名称
+- 剩余天数
+- 到期时间
+- 已用额度
+- 剩余额度
+- 总额度
+- 已用百分比
+- 额度刷新时间
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 使用说明
+
+1. 安装 APK
+2. 打开 App，点击右上角 **+** 添加账户
+3. 输入以下信息：
+   - 用户名：您的账户用户名
+   - API Key：您的 API 密钥
+   - API 接口地址：例如 `http://v2api.aicodee.com/chaxun`
+4. 返回主页查看额度
+5. 可在设置中切换主题
+
+## 桌面小组件
+
+- **小号组件** - 显示套餐名和进度条
+- **中号组件** - 显示套餐名、进度条和刷新时间
+- **大号组件** - 显示完整额度信息
+
+添加方式：长按桌面 → 添加小组件 → 选择 "API 额度"
+
+## 技术栈
+
+- Flutter 3.24.0
+- Provider 状态管理
+- Dio 网络请求
+- home_widget 桌面小组件
+
+## 项目地址
+
+https://github.com/raopan2021/api_quota_helper
+
+## 作者
+
+API Quota Helper

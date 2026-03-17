@@ -1,13 +1,15 @@
 import 'package:home_widget/home_widget.dart';
 import '../models/account.dart';
 
+/// 小组件服务 - 更新桌面小组件数据
 class WidgetService {
   static const String appGroupId = 'group.com.apiapp.quota_helper';
   static const String androidWidgetName = 'QuotaWidgetProvider';
 
-  // 更新桌面小组件数据
+  /// 更新桌面小组件数据
   Future<void> updateWidget(ApiAccount? account) async {
     if (account?.quotaInfo == null) {
+      // 无数据时显示默认
       await HomeWidget.saveWidgetData<String>('quota_name', '未设置');
       await HomeWidget.saveWidgetData<String>('quota_percent', '0');
       await HomeWidget.saveWidgetData<String>('quota_used', '0');
@@ -21,7 +23,7 @@ class WidgetService {
       await HomeWidget.saveWidgetData<String>('quota_used', info['used']?.toString() ?? '0');
       await HomeWidget.saveWidgetData<String>('quota_limit', info['limit']?.toString() ?? '0');
       await HomeWidget.saveWidgetData<String>('quota_remaining', info['remaining']?.toString() ?? '0');
-      await HomeWidget.saveWidgetData<String>('quota_reset', _formatResetTime(info['resetTime']));
+      await HomeWidget.saveWidgetData<String>('quota_reset', _formatResetTime(info['nextResetTime']));
     }
     
     // 通知组件更新
@@ -30,6 +32,7 @@ class WidgetService {
     );
   }
 
+  /// 格式化刷新时间
   String _formatResetTime(dynamic resetTime) {
     if (resetTime == null) return '无';
     try {
@@ -53,7 +56,7 @@ class WidgetService {
     }
   }
 
-  // 注册组件回调
+  /// 注册小组件点击回调
   Future<void> registerCallback(Function(Uri?) callback) async {
     await HomeWidget.widgetClicked.listen(callback);
   }
