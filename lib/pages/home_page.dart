@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import '../providers/account_provider.dart';
 import '../services/widget_service.dart';
 import 'add_account_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -26,10 +26,19 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('API 额度查询'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -95,13 +104,8 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 16),
           
           // 详细信息
-          if (info != null) ...[
-            _buildDetailRow('套餐类型', info['subscription']?.toString() ?? '-'),
-            _buildDetailRow('已用额度', _formatAmount(info['used'])),
-            _buildDetailRow('剩余额度', _formatAmount(info['remaining'])),
-            _buildDetailRow('总额度', _formatAmount(info['limit'])),
-            _buildDetailRow('刷新时间', info['resetTime']?.toString() ?? '无'),
-            _buildDetailRow('最后更新', _formatDateTime(account?.lastRefresh)),
+          if (info != null && !info.containsKey('error')) ...[
+            _buildDetailCard(info),
           ],
           
           const SizedBox(height: 16),
@@ -147,10 +151,21 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
+            // 套餐名称
             Text(
               info?['subscription']?.toString() ?? '未设置',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 16),
+            
+            // 剩余天数
+            if (info != null && info.containsKey('daysRemaining'))
+              Text(
+                '${info['daysRemaining']} 天',
+                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.blue),
+              ),
+            const Text('剩余时间', style: TextStyle(color: Colors.grey)),
+            
             const SizedBox(height: 24),
             
             // 环形进度条
@@ -189,11 +204,42 @@ class _HomePageState extends State<HomePage> {
             
             if (isLoading)
               const CircularProgressIndicator()
-            else
-              Text(
-                '剩余: ${_formatAmount(info?['remaining'])}',
-                style: const TextStyle(fontSize: 18),
+            else if (info != null)
+              Column(
+                children: [
+                  Text(
+                    '剩余: \$${_formatAmount(info['remaining'])}',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                  Text(
+                    '总额: \$${_formatAmount(info['limit'])}',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  ),
+                ],
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailCard(Map<String, dynamic> info) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('详细信息', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            _buildDetailRow('套餐名称', info['subscription']?.toString() ?? '-'),
+            _buildDetailRow('剩余天数', '${info['daysRemaining']?.toString() ?? '-'} 天'),
+            _buildDetailRow('到期时间', info['endTime']?.toString() ?? '-'),
+            _buildDetailRow('已用额度', '\$${_formatAmount(info['used'])}'),
+            _buildDetailRow('剩余额度', '\$${_formatAmount(info['remaining'])}'),
+            _buildDetailRow('总额度', '\$${_formatAmount(info['limit'])}'),
+            _buildDetailRow('已用百分比', '${info['percent']?.toString() ?? '0'}%'),
+            _buildDetailRow('额度刷新时间', info['nextResetTime']?.toString() ?? '-'),
           ],
         ),
       ),
@@ -230,10 +276,24 @@ class _HomePageState extends State<HomePage> {
                 child: Text(account.name[0].toUpperCase()),
               ),
               title: Text(account.name),
-              subtitle: Text(account.provider),
-              trailing: IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () => _confirmDelete(provider, account.id),
+              subtitle: Text(account.apiUrl),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddAccountPage(editId: account.id),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _confirmDelete(provider, account.id),
+                  ),
+                ],
               ),
             );
           }),
@@ -266,20 +326,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _formatAmount(dynamic amount) {
-    if (amount == null) return '-';
+    if (amount == null) return '0.00';
     if (amount is num) {
-      if (amount >= 1000000) {
-        return '${(amount / 1000000).toStringAsFixed(2)}M';
-      } else if (amount >= 1000) {
-        return '${(amount / 1000).toStringAsFixed(2)}K';
-      }
       return amount.toStringAsFixed(2);
     }
     return amount.toString();
-  }
-
-  String _formatDateTime(DateTime? dt) {
-    if (dt == null) return '-';
-    return DateFormat('yyyy-MM-dd HH:mm').format(dt);
   }
 }
