@@ -34,13 +34,14 @@ class AccountProvider extends ChangeNotifier {
   Future<bool> addAccount({
     required String name,
     required String apiKey,
-    required String provider,
+    required String apiUrl,
   }) async {
     final account = ApiAccount(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       apiKey: apiKey,
-      provider: provider,
+      provider: 'custom',
+      apiUrl: apiUrl,
     );
     
     final success = await _storageService.addAccount(account);
@@ -48,6 +49,33 @@ class AccountProvider extends ChangeNotifier {
       _accounts.add(account);
       if (_selectedAccount == null) {
         _selectedAccount = account;
+      }
+      notifyListeners();
+    }
+    return success;
+  }
+
+  // 更新账户
+  Future<bool> updateAccount({
+    required String id,
+    required String name,
+    required String apiKey,
+    required String apiUrl,
+  }) async {
+    final index = _accounts.indexWhere((a) => a.id == id);
+    if (index == -1) return false;
+    
+    final updatedAccount = _accounts[index].copyWith(
+      name: name,
+      apiKey: apiKey,
+      apiUrl: apiUrl,
+    );
+    
+    final success = await _storageService.updateAccount(updatedAccount);
+    if (success) {
+      _accounts[index] = updatedAccount;
+      if (_selectedAccount?.id == id) {
+        _selectedAccount = updatedAccount;
       }
       notifyListeners();
     }
@@ -92,6 +120,7 @@ class AccountProvider extends ChangeNotifier {
           name: _selectedAccount!.name,
           apiKey: _selectedAccount!.apiKey,
           provider: _selectedAccount!.provider,
+          apiUrl: _selectedAccount!.apiUrl,
           lastRefresh: DateTime.now(),
           quotaInfo: quotaData,
         );
@@ -127,6 +156,7 @@ class AccountProvider extends ChangeNotifier {
             name: _accounts[i].name,
             apiKey: _accounts[i].apiKey,
             provider: _accounts[i].provider,
+            apiUrl: _accounts[i].apiUrl,
             lastRefresh: DateTime.now(),
             quotaInfo: quotaData,
           );
