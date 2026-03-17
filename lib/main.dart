@@ -26,10 +26,12 @@ class QuotaApp extends StatelessWidget {
       child: MaterialApp(
         title: 'API 额度查询',
         debugShowCheckedModeBanner: false,
+        // 亮色主题
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
           useMaterial3: true,
         ),
+        // 暗黑主题
         darkTheme: ThemeData(
           brightness: Brightness.dark,
           colorScheme: ColorScheme.fromSeed(
@@ -38,6 +40,7 @@ class QuotaApp extends StatelessWidget {
           ),
           useMaterial3: true,
         ),
+        // 根据设置切换主题
         themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
         home: const HomePage(),
       ),

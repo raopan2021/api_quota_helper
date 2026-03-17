@@ -1,12 +1,12 @@
-// API 账户模型
+// API 账户数据模型
 class ApiAccount {
-  final String id;
-  final String name;        // 用户名
-  final String apiKey;      // API Key
-  final String provider;    // 暂时保留兼容
-  final String apiUrl;      // API 接口地址
-  final DateTime? lastRefresh;
-  final Map<String, dynamic>? quotaInfo;
+  final String id;           // 账户唯一标识
+  final String name;          // 用户名
+  final String apiKey;       // API 密钥
+  final String provider;     // 提供商（保留兼容）
+  final String apiUrl;        // API 接口地址
+  final DateTime? lastRefresh; // 上次刷新时间
+  final Map<String, dynamic>? quotaInfo; // 额度信息
 
   ApiAccount({
     required this.id,
@@ -18,7 +18,7 @@ class ApiAccount {
     this.quotaInfo,
   });
 
-  // 解析 API 响应数据
+  // 从 API 响应创建账户
   factory ApiAccount.fromApiResponse(String id, String name, String apiKey, String provider, String apiUrl, Map<String, dynamic> data) {
     return ApiAccount(
       id: id,
@@ -31,6 +31,7 @@ class ApiAccount {
     );
   }
 
+  // 转换为 JSON
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
@@ -41,6 +42,7 @@ class ApiAccount {
     'quotaInfo': quotaInfo,
   };
 
+  // 从 JSON 创建
   factory ApiAccount.fromJson(Map<String, dynamic> json) {
     return ApiAccount(
       id: json['id'],
