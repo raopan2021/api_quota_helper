@@ -207,7 +207,8 @@ fun LogScreen(onBack: () -> Unit) {
     var showDeleteAllConfirm by remember { mutableStateOf(false) }
     var showCopiedTip by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
-    
+    var isRefreshing by remember { mutableStateOf(false) }
+
     // 每次访问时获取最新日志
     val logs = remember(refreshKey) { LogBuffer.getAll() }
 
@@ -236,52 +237,66 @@ fun LogScreen(onBack: () -> Unit) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { refreshKey++ },
+                onClick = {
+                    isRefreshing = true
+                    refreshKey++
+                    isRefreshing = false
+                },
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = "刷新")
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (logs.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "暂无日志",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(logs, key = { it.id }) { entry ->
-                        LogEntryCard(
-                            entry = entry,
-                            onCopy = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("log", LogBuffer.getAsString(entry)))
-                                showCopiedTip = true
-                            },
-                            onDelete = {
-                                LogBuffer.delete(entry.id)
-                                refreshKey++
-                            }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            PullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = {
+                    isRefreshing = true
+                    refreshKey++
+                    isRefreshing = false
+                },
+                modifier = Modifier.fillMaxSize()
+            ) {
+                if (logs.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "暂无日志",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(logs, key = { it.id }) { entry ->
+                            LogEntryCard(
+                                entry = entry,
+                                onCopy = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("log", LogBuffer.getAsString(entry)))
+                                    showCopiedTip = true
+                                },
+                                onDelete = {
+                                    LogBuffer.delete(entry.id)
+                                    refreshKey++
+                                }
+                            )
+                        }
                     }
                 }
             }
-            
+
             if (showCopiedTip) {
                 Snackbar(
                     modifier = Modifier
