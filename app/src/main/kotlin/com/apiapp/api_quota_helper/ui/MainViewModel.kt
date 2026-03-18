@@ -2,9 +2,9 @@ package com.apiapp.api_quota_helper.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.apiapp.api_quota_helper.data.model.Account
-import com.apiapp.api_quota_helper.data.model.AccountType
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
+import com.apiapp.api_quota_helper.data.model.AppSettings
+import com.apiapp.api_quota_helper.data.model.UserAccount
 import com.apiapp.api_quota_helper.data.repository.AccountRepository
 import com.apiapp.api_quota_helper.data.service.QuotaService
 import kotlinx.coroutines.flow.*
@@ -15,7 +15,9 @@ data class MainUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val showAddDialog: Boolean = false,
-    val editingAccount: Account? = null
+    val editingAccount: UserAccount? = null,
+    val settings: AppSettings = AppSettings(),
+    val showSettings: Boolean = false
 )
 
 class MainViewModel(
@@ -28,6 +30,7 @@ class MainViewModel(
 
     init {
         loadAccounts()
+        loadSettings()
     }
 
     private fun loadAccounts() {
@@ -51,6 +54,14 @@ class MainViewModel(
         }
     }
 
+    private fun loadSettings() {
+        viewModelScope.launch {
+            repository.settings.collect { settings ->
+                _uiState.update { it.copy(settings = settings) }
+            }
+        }
+    }
+
     fun refreshAllQuotas() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
@@ -60,7 +71,8 @@ class MainViewModel(
                     val result = quotaService.queryQuota(awq.account)
                     awq.copy(
                         quota = result.getOrNull(),
-                        error = result.exceptionOrNull()?.message
+                        error = result.exceptionOrNull()?.message,
+                        lastUpdated = System.currentTimeMillis()
                     )
                 } else {
                     awq
@@ -74,7 +86,7 @@ class MainViewModel(
         _uiState.update { it.copy(showAddDialog = true, editingAccount = null) }
     }
 
-    fun showEditDialog(account: Account) {
+    fun showEditDialog(account: UserAccount) {
         _uiState.update { it.copy(showAddDialog = true, editingAccount = account) }
     }
 
@@ -82,14 +94,13 @@ class MainViewModel(
         _uiState.update { it.copy(showAddDialog = false, editingAccount = null) }
     }
 
-    fun saveAccount(type: AccountType, name: String, apiKey: String) {
+    fun saveAccount(username: String, token: String) {
         viewModelScope.launch {
             val existingAccount = _uiState.value.editingAccount
-            val account = Account(
+            val account = UserAccount(
                 id = existingAccount?.id ?: quotaService.generateAccountId(),
-                type = type,
-                name = name,
-                apiKey = apiKey,
+                username = username,
+                token = token,
                 createdAt = existingAccount?.createdAt ?: System.currentTimeMillis()
             )
             repository.saveAccount(account)
@@ -99,7 +110,7 @@ class MainViewModel(
         }
     }
 
-    private fun refreshAccount(account: Account) {
+    private fun refreshAccount(account: UserAccount) {
         viewModelScope.launch {
             val result = quotaService.queryQuota(account)
             val currentAccounts = _uiState.value.accounts
@@ -107,7 +118,8 @@ class MainViewModel(
                 if (awq.account.id == account.id) {
                     awq.copy(
                         quota = result.getOrNull(),
-                        error = result.exceptionOrNull()?.message
+                        error = result.exceptionOrNull()?.message,
+                        lastUpdated = System.currentTimeMillis()
                     )
                 } else {
                     awq
@@ -123,7 +135,7 @@ class MainViewModel(
         }
     }
 
-    fun refreshAccountManually(account: Account) {
+    fun refreshAccountManually(account: UserAccount) {
         viewModelScope.launch {
             val currentAccounts = _uiState.value.accounts
             val updated = currentAccounts.map { awq ->
@@ -135,6 +147,30 @@ class MainViewModel(
             }
             _uiState.update { it.copy(accounts = updated) }
             refreshAccount(account)
+        }
+    }
+
+    fun showSettings() {
+        _uiState.update { it.copy(showSettings = true) }
+    }
+
+    fun dismissSettings() {
+        _uiState.update { it.copy(showSettings = false) }
+    }
+
+    fun updateDarkMode(enabled: Boolean) {
+        viewModelScope.launch {
+            val newSettings = _uiState.value.settings.copy(darkMode = enabled)
+            repository.saveSettings(newSettings)
+            _uiState.update { it.copy(settings = newSettings) }
+        }
+    }
+
+    fun updateRefreshInterval(minutes: Int) {
+        viewModelScope.launch {
+            val newSettings = _uiState.value.settings.copy(refreshIntervalMinutes = minutes)
+            repository.saveSettings(newSettings)
+            _uiState.update { it.copy(settings = newSettings) }
         }
     }
 
