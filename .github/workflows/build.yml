@@ -21,7 +21,23 @@ jobs:
         
     - name: Install dependencies
       run: flutter pub get
-      
+    
+    - name: Generate release keystore
+      run: |
+        keytool -genkeypair -v -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 \
+          -keystore release.keystore \
+          -alias api_quota_helper \
+          -storepass raopan2021 \
+          -keypass raopan2021 \
+          -dname "CN=raopan2021, OU=raopan2021, O=raopan2021, L=China, ST=China, C=CN"
+    
+    - name: Create key.properties
+      run: |
+        echo "storeFile=release.keystore" > key.properties
+        echo "storePassword=raopan2021" >> key.properties
+        echo "keyAlias=api_quota_helper" >> key.properties
+        echo "keyPassword=raopan2021" >> key.properties
+        
     - name: Build APK
       run: flutter build apk --release
       
