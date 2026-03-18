@@ -204,7 +204,7 @@ fun SettingsScreen(
 @Composable
 fun LogScreen(onBack: () -> Unit) {
     val context = LocalContext.current
-    var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showDeleteAllConfirm by remember { mutableStateOf(false) }
     var showCopiedTip by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
     
@@ -228,19 +228,8 @@ fun LogScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            if (logs.isNotEmpty()) {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("logs", LogBuffer.getAllAsString()))
-                                showCopiedTip = true
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "复制")
-                    }
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "清除")
+                    IconButton(onClick = { showDeleteAllConfirm = true }) {
+                        Icon(Icons.Default.DeleteSweep, contentDescription = "清空全部")
                     }
                     IconButton(onClick = { refreshKey++ }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
@@ -271,8 +260,19 @@ fun LogScreen(onBack: () -> Unit) {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(logs) { entry ->
-                        LogEntryCard(entry = entry)
+                    items(logs, key = { it.id }) { entry ->
+                        LogEntryCard(
+                            entry = entry,
+                            onCopy = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("log", LogBuffer.getAsString(entry)))
+                                showCopiedTip = true
+                            },
+                            onDelete = {
+                                LogBuffer.delete(entry.id)
+                                refreshKey++
+                            }
+                        )
                     }
                 }
             }
@@ -290,23 +290,23 @@ fun LogScreen(onBack: () -> Unit) {
         }
     }
 
-    if (showDeleteConfirm) {
+    if (showDeleteAllConfirm) {
         AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("确认删除") },
+            onDismissRequest = { showDeleteAllConfirm = false },
+            title = { Text("确认清空") },
             text = { Text("确定要清空所有日志吗？此操作不可恢复。") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         LogBuffer.clear()
-                        showDeleteConfirm = false
+                        showDeleteAllConfirm = false
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text("清空", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
+                TextButton(onClick = { showDeleteAllConfirm = false }) {
                     Text("取消")
                 }
             }
@@ -315,7 +315,11 @@ fun LogScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun LogEntryCard(entry: LogBuffer.LogEntry) {
+fun LogEntryCard(
+    entry: LogBuffer.LogEntry,
+    onCopy: () -> Unit,
+    onDelete: () -> Unit
+) {
     val backgroundColor = if (entry.success) {
         Color(0xFF4CAF50).copy(alpha = 0.1f)
     } else {
@@ -328,17 +332,12 @@ fun LogEntryCard(entry: LogBuffer.LogEntry) {
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // 顶部：时间和状态
+            // 顶部：时间和状态 + 操作按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = entry.time,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = if (entry.success) Icons.Default.CheckCircle else Icons.Default.Error,
@@ -348,11 +347,40 @@ fun LogEntryCard(entry: LogBuffer.LogEntry) {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
+                        text = entry.time,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
                         text = if (entry.success) "成功" else "失败",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
                         color = accentColor
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(
+                        onClick = onCopy,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = "复制",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "删除",
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFFF44336)
+                        )
+                    }
                 }
             }
             

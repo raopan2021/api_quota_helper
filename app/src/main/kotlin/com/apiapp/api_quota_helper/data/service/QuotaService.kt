@@ -20,6 +20,7 @@ object LogBuffer {
     private const val maxSize = 50
     
     data class LogEntry(
+        val id: Long = System.currentTimeMillis(),
         val time: String,
         val success: Boolean,
         val username: String,
@@ -38,7 +39,6 @@ object LogBuffer {
     
     fun logRequest(username: String) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        // 先添加一个请求中的日志
         add(LogEntry(
             time = time,
             success = false,
@@ -51,11 +51,6 @@ object LogBuffer {
     
     fun logResponse(username: String, success: Boolean, responseCode: Int, responseMessage: String, responseBody: String, errorMessage: String? = null) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        // 更新最后一个日志条目
-        val lastEntry = logs.peek()
-        if (lastEntry != null && lastEntry.username == username && lastEntry.responseCode == 0) {
-            logs.poll()
-        }
         add(LogEntry(
             time = time,
             success = success,
@@ -67,15 +62,27 @@ object LogBuffer {
         ))
     }
     
-    fun getAll(): List<LogEntry> = logs.toList().reversed() // 最新的在前
+    fun getAll(): List<LogEntry> = logs.toList().reversed()
+    
+    fun delete(id: Long) {
+        logs.removeAll { it.id == id }
+    }
     
     fun clear() = logs.clear()
     
-    fun getAllAsString(): String = getAll().joinToString("\n---\n") { entry ->
-        if (entry.success) {
-            "[${entry.time}] ✅ ${entry.username}\n状态码: ${entry.responseCode} ${entry.responseMessage}\n响应: ${entry.responseBody}"
-        } else {
-            "[${entry.time}] ❌ ${entry.username}\n状态码: ${entry.responseCode} ${entry.responseMessage}\n错误: ${entry.errorMessage ?: entry.responseBody}"
+    fun getAsString(entry: LogEntry): String = if (entry.success) {
+        "[${entry.time}] ✅ ${entry.username}\n状态码: ${entry.responseCode} ${entry.responseMessage}\n响应:\n${formatJsonForCopy(entry.responseBody)}"
+    } else {
+        "[${entry.time}] ❌ ${entry.username}\n状态码: ${entry.responseCode} ${entry.responseMessage}\n错误: ${entry.errorMessage ?: entry.responseBody}"
+    }
+    
+    fun getAllAsString(): String = getAll().joinToString("\n---\n") { getAsString(it) }
+    
+    private fun formatJsonForCopy(jsonString: String): String {
+        return try {
+            JSONObject(jsonString).toString(2)
+        } catch (e: Exception) {
+            jsonString
         }
     }
 }
