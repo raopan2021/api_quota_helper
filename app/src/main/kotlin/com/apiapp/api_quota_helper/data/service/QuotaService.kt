@@ -16,24 +16,68 @@ import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
 object LogBuffer {
-    private val logs = ConcurrentLinkedQueue<String>()
-    private val maxSize = 100
+    private val logs = ConcurrentLinkedQueue<LogEntry>()
+    private const val maxSize = 50
     
-    fun add(tag: String, message: String) {
-        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        val log = "[$time] $tag: $message"
-        logs.offer(log)
+    data class LogEntry(
+        val time: String,
+        val success: Boolean,
+        val username: String,
+        val responseCode: Int,
+        val responseMessage: String,
+        val responseBody: String,
+        val errorMessage: String? = null
+    )
+    
+    fun add(entry: LogEntry) {
+        logs.offer(entry)
         while (logs.size > maxSize) {
             logs.poll()
         }
     }
     
-    fun d(tag: String, message: String) = add(tag, message)
-    fun e(tag: String, message: String) = add(tag, "ERROR: $message")
+    fun logRequest(username: String) {
+        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        // 先添加一个请求中的日志
+        add(LogEntry(
+            time = time,
+            success = false,
+            username = username,
+            responseCode = 0,
+            responseMessage = "请求中...",
+            responseBody = ""
+        ))
+    }
     
-    fun getAll(): String = logs.joinToString("\n")
+    fun logResponse(username: String, success: Boolean, responseCode: Int, responseMessage: String, responseBody: String, errorMessage: String? = null) {
+        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        // 更新最后一个日志条目
+        val lastEntry = logs.peek()
+        if (lastEntry != null && lastEntry.username == username && lastEntry.responseCode == 0) {
+            logs.poll()
+        }
+        add(LogEntry(
+            time = time,
+            success = success,
+            username = username,
+            responseCode = responseCode,
+            responseMessage = responseMessage,
+            responseBody = responseBody,
+            errorMessage = errorMessage
+        ))
+    }
+    
+    fun getAll(): List<LogEntry> = logs.toList().reversed() // 最新的在前
     
     fun clear() = logs.clear()
+    
+    fun getAllAsString(): String = getAll().joinToString("\n---\n") { entry ->
+        if (entry.success) {
+            "[${entry.time}] ✅ ${entry.username}\n状态码: ${entry.responseCode} ${entry.responseMessage}\n响应: ${entry.responseBody}"
+        } else {
+            "[${entry.time}] ❌ ${entry.username}\n状态码: ${entry.responseCode} ${entry.responseMessage}\n错误: ${entry.errorMessage ?: entry.responseBody}"
+        }
+    }
 }
 
 class QuotaService() {
@@ -43,8 +87,7 @@ class QuotaService() {
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> = withContext(Dispatchers.IO) {
         try {
             val url = URL("http://v2api.aicodee.com/chaxun/query")
-            LogBuffer.d(TAG, "请求URL: http://v2api.aicodee.com/chaxun/query")
-            LogBuffer.d(TAG, "请求参数: username=${account.username}")
+            LogBuffer.logRequest(account.username)
             
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
@@ -60,8 +103,6 @@ class QuotaService() {
                 put("username", account.username)
                 put("token", account.token)
             }.toString()
-            
-            LogBuffer.d(TAG, "请求体: $jsonBody")
 
             OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
                 writer.write(jsonBody)
@@ -70,8 +111,7 @@ class QuotaService() {
 
             // 读取响应
             val responseCode = connection.responseCode
-            LogBuffer.d(TAG, "响应码: $responseCode")
-            LogBuffer.d(TAG, "响应消息: ${connection.responseMessage}")
+            val responseMessage = connection.responseMessage
             
             val reader = BufferedReader(InputStreamReader(
                 if (responseCode == HttpURLConnection.HTTP_OK) 
@@ -89,16 +129,24 @@ class QuotaService() {
             reader.close()
 
             val body = response.toString()
-            LogBuffer.d(TAG, "响应体: $body")
+            
+            // 记录响应日志
+            if (responseCode != HttpURLConnection.HTTP_OK || body.isEmpty() || !body.contains("\"success\":true")) {
+                val errorMsg = when {
+                    responseCode != HttpURLConnection.HTTP_OK -> "HTTP $responseCode"
+                    body.isEmpty() -> "空响应"
+                    else -> JSONObject(body).optString("message", "查询失败")
+                }
+                LogBuffer.logResponse(account.username, false, responseCode, responseMessage, body, errorMsg)
+            } else {
+                LogBuffer.logResponse(account.username, true, responseCode, responseMessage, body)
+            }
 
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                val error = "请求失败: HTTP $responseCode, 响应: $body"
-                LogBuffer.e(TAG, error)
-                return@withContext Result.failure(Exception(error))
+                return@withContext Result.failure(Exception("请求失败: HTTP $responseCode"))
             }
 
             if (body.isEmpty()) {
-                LogBuffer.e(TAG, "空响应")
                 return@withContext Result.failure(Exception("空响应"))
             }
 
@@ -107,15 +155,11 @@ class QuotaService() {
 
             if (!success) {
                 val message = jsonObject.optString("message", "查询失败")
-                LogBuffer.e(TAG, message)
                 return@withContext Result.failure(Exception(message))
             }
 
             val data = jsonObject.optJSONObject("data")
-                ?: run {
-                    LogBuffer.e(TAG, "数据为空")
-                    return@withContext Result.failure(Exception("数据为空"))
-                }
+                ?: return@withContext Result.failure(Exception("数据为空"))
 
             val quotaData = QuotaData(
                 subscription_id = data.optInt("subscription_id", 0),
@@ -128,10 +172,9 @@ class QuotaService() {
                 status = data.optString("status", "")
             )
 
-            LogBuffer.d(TAG, "解析成功: plan=${quotaData.plan_name}, used=${quotaData.amount_used}/${quotaData.amount}")
             Result.success(quotaData)
         } catch (e: Exception) {
-            LogBuffer.e(TAG, "${e.message}")
+            LogBuffer.logResponse(account.username, false, 0, "", "", e.message)
             Result.failure(e)
         }
     }

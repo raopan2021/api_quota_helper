@@ -3,17 +3,16 @@ package com.apiapp.api_quota_helper.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.os.Bundle
-import android.widget.Toast
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,7 +48,6 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
-                .verticalScroll(rememberScrollState())
         ) {
             // 主题设置
             Text(
@@ -204,16 +202,11 @@ fun LogScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showCopiedTip by remember { mutableStateOf(false) }
+    var refreshKey by remember { mutableIntStateOf(0) }
     
-    // 使用 remember 计算日志，每次访问时重新获取最新日志
-    val logs: String = remember { LogBuffer.getAll() }
-    
-    // 反转日志顺序，最新的在前
-    val reversedLogs = remember(logs) {
-        if (logs.isEmpty()) "" else logs.lines().reversed().joinToString("\n")
-    }
+    // 每次访问时获取最新日志
+    val logs = remember(refreshKey) { LogBuffer.getAll() }
 
-    // 显示"已复制"提示
     LaunchedEffect(showCopiedTip) {
         if (showCopiedTip) {
             kotlinx.coroutines.delay(1500)
@@ -231,26 +224,21 @@ fun LogScreen(onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    // 复制按钮
                     IconButton(
                         onClick = {
-                            if (reversedLogs.isNotEmpty()) {
+                            if (logs.isNotEmpty()) {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("logs", reversedLogs))
+                                clipboard.setPrimaryClip(ClipData.newPlainText("logs", LogBuffer.getAllAsString()))
                                 showCopiedTip = true
                             }
                         }
                     ) {
                         Icon(Icons.Default.ContentCopy, contentDescription = "复制")
                     }
-                    
-                    // 删除按钮
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(Icons.Default.Delete, contentDescription = "清除")
                     }
-                    
-                    // 刷新按钮
-                    IconButton(onClick = { /* 强制 recompose */ }) {
+                    IconButton(onClick = { refreshKey++ }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                 }
@@ -258,33 +246,33 @@ fun LogScreen(onBack: () -> Unit) {
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = if (reversedLogs.isEmpty()) "暂无日志" else "最近请求记录（最新在前）：",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Card(
-                    modifier = Modifier.fillMaxSize()
+            if (logs.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = reversedLogs.ifEmpty { "暂无日志" },
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(12.dp)
-                            .verticalScroll(rememberScrollState())
+                        "暂无日志",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(logs) { entry ->
+                        LogEntryCard(entry = entry)
+                    }
                 }
             }
             
-            // 已复制提示
             if (showCopiedTip) {
                 Snackbar(
                     modifier = Modifier
@@ -298,7 +286,6 @@ fun LogScreen(onBack: () -> Unit) {
         }
     }
 
-    // 删除确认对话框
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -320,5 +307,103 @@ fun LogScreen(onBack: () -> Unit) {
                 }
             }
         )
+    }
+}
+
+@Composable
+fun LogEntryCard(entry: LogBuffer.LogEntry) {
+    val backgroundColor = if (entry.success) {
+        Color(0xFF4CAF50).copy(alpha = 0.1f)
+    } else {
+        Color(0xFFF44336).copy(alpha = 0.1f)
+    }
+    val accentColor = if (entry.success) Color(0xFF4CAF50) else Color(0xFFF44336)
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // 顶部：时间和状态
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = entry.time,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (entry.success) Icons.Default.CheckCircle else Icons.Default.Error,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (entry.success) "成功" else "失败",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = accentColor
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // 用户名
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = entry.username,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // 响应码和消息
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Code,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "响应: ${entry.responseCode} ${entry.responseMessage}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+            }
+            
+            // 错误消息或响应体
+            if (entry.errorMessage != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = entry.errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFF44336)
+                )
+            } else if (entry.responseBody.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = entry.responseBody.take(200) + if (entry.responseBody.length > 200) "..." else "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
     }
 }
