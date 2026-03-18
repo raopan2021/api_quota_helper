@@ -5,7 +5,9 @@ on:
 
   push:
     branches:
-      - '**'
+      - 'master'
+    tags-ignore:
+      - 'v*'
     paths-ignore:
       - 'LICENSE'
       - '*.md'
