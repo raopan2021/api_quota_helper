@@ -167,6 +167,5 @@ class MainViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        quotaService.close()
     }
 }
