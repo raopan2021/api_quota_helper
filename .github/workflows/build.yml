@@ -12,15 +12,17 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - name: Set up Flutter
-      uses: subosito/flutter-action@v2
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
-        flutter-version: '3.24.0'
-        
+        node-version: '20'
+        cache: 'npm'
+    
     - name: Install dependencies
-      run: flutter pub get
+      run: npm ci
     
     - name: Generate release keystore
       run: |
@@ -33,23 +35,43 @@ jobs:
     
     - name: Create key.properties
       run: |
-        echo "storeFile=release.keystore" > key.properties
+        echo "storeFile=release.keystore" >> key.properties
         echo "storePassword=raopan2021" >> key.properties
         echo "keyAlias=api_quota_helper" >> key.properties
         echo "keyPassword=raopan2021" >> key.properties
-        
-    - name: Build APK
-      run: flutter build apk --release
-      
+    
+    - name: Setup Expo
+      uses: expo/expo-github-action@v8
+      with:
+        expo-version: latest
+        token: ${{ secrets.EXPO_TOKEN }}
+    
+    - name: Prebuild Android
+      run: npx expo prebuild --platform android --clean
+    
+    - name: Build Android APK (Debug)
+      run: |
+        cd android
+        ./gradlew assembleDebug
+      env:
+        EXPO_NO_TELEMETRY: 1
+    
+    - name: Build Android APK (Release)
+      run: |
+        cd android
+        ./gradlew assembleRelease
+      env:
+        EXPO_NO_TELEMETRY: 1
+    
     - name: Upload APK as Artifact
       uses: actions/upload-artifact@v4
       with:
         name: apk-release
-        path: build/app/outputs/flutter-apk/app-release.apk
-        
+        path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+    
     - name: Upload to Release
       if: github.event_name == 'release'
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
-        files: build/app/outputs/flutter-apk/app-release.apk
+        files: android/app/build/outputs/apk/release/app-release-unsigned.apk
         generate_release_notes: true
