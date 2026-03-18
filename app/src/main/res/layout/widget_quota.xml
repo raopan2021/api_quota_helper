@@ -40,7 +40,16 @@
         android:layout_marginTop="4dp"
         android:text="剩余: -"
         android:textSize="14sp"
-        android:textColor="@android:color/holo_green_dark" />
+        android:textColor="#4CAF50" />
+
+    <TextView
+        android:id="@+id/widget_plan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="套餐: -"
+        android:textSize="12sp"
+        android:textColor="@android:color/darker_gray" />
 
     <TextView
         android:id="@+id/widget_update_time"

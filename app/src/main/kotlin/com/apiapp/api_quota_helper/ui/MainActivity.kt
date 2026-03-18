@@ -7,7 +7,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -23,28 +22,23 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ApiQuotaHelperTheme {
+            val context = LocalContext.current
+            val repository = remember { AccountRepository(context.applicationContext) }
+            val quotaService = remember { QuotaService() }
+            val viewModel: MainViewModel = viewModel {
+                MainViewModel(repository, quotaService)
+            }
+            
+            val uiState by viewModel.uiState.collectAsState()
+            
+            ApiQuotaHelperTheme(darkTheme = uiState.settings.darkMode) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainApp()
+                    MainScreen(viewModel = viewModel)
                 }
             }
         }
     }
-}
-
-@Composable
-fun MainApp() {
-    val context = LocalContext.current
-    val repository = remember { AccountRepository(context.applicationContext) }
-    val quotaService = remember { QuotaService() }
-    val viewModel: MainViewModel = viewModel {
-        MainViewModel(repository, quotaService)
-    }
-    
-    val settings by viewModel.uiState.collectAsState()
-    
-    MainScreen(viewModel = viewModel)
 }

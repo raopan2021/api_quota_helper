@@ -9,8 +9,16 @@ import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.client.statement.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
+
+@Serializable
+data class QuotaRequest(
+    val username: String,
+    val token: String
+)
 
 class QuotaService {
 
@@ -28,9 +36,15 @@ class QuotaService {
 
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> {
         return try {
+            val request = QuotaRequest(
+                username = account.username,
+                token = account.token
+            )
+            val requestBody = json.encodeToString(request)
+            
             val response = httpClient.post("http://v2api.aicodee.com/chaxun/query") {
                 contentType(ContentType.Application.Json)
-                setBody("""{"username":"${account.username}","token":"${account.token}"}""")
+                setBody(requestBody)
             }
             
             val body = response.bodyAsText()
