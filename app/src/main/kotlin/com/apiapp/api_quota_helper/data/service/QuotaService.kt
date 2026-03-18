@@ -17,9 +17,10 @@ class QuotaService() {
         .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
         .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .protocols(listOf(Protocol.HTTP_1_1))
         .build()
 
-    private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
+    private val JSON_MEDIA_TYPE = "application/json".toMediaType()
 
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> = withContext(Dispatchers.IO) {
         try {
@@ -31,15 +32,12 @@ class QuotaService() {
             val request = Request.Builder()
                 .url("http://v2api.aicodee.com/chaxun/query")
                 .post(jsonBody.toRequestBody(JSON_MEDIA_TYPE))
+                .header("Accept", "application/json")
                 .header("Content-Type", "application/json")
                 .build()
 
             val response = httpClient.newCall(request).execute()
-            val body = response.body?.string() ?: throw IOException("Empty response")
-
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception("请求失败: ${response.code}"))
-            }
+            val body = response.body?.string() ?: throw IOException("空响应")
 
             val jsonObject = JSONObject(body)
             val success = jsonObject.optBoolean("success", false)
