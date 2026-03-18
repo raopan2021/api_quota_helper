@@ -4,40 +4,65 @@ import com.apiapp.api_quota_helper.data.model.QuotaData
 import com.apiapp.api_quota_helper.data.model.UserAccount
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import java.util.UUID
-import java.io.IOException
 
 class QuotaService() {
 
-    private val httpClient = OkHttpClient.Builder()
-        .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-        .protocols(listOf(Protocol.HTTP_1_1))
-        .build()
-
-    private val JSON_MEDIA_TYPE = "application/json".toMediaType()
-
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> = withContext(Dispatchers.IO) {
         try {
+            val url = URL("http://v2api.aicodee.com/chaxun/query")
+            val connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.doInput = true
+            connection.connectTimeout = 15000
+            connection.readTimeout = 30000
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Accept", "application/json")
+
+            // 发送请求体
             val jsonBody = JSONObject().apply {
                 put("username", account.username)
                 put("token", account.token)
             }.toString()
 
-            val request = Request.Builder()
-                .url("http://v2api.aicodee.com/chaxun/query")
-                .post(jsonBody.toRequestBody(JSON_MEDIA_TYPE))
-                .header("Accept", "application/json")
-                .header("Content-Type", "application/json")
-                .build()
+            OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
+                writer.write(jsonBody)
+                writer.flush()
+            }
 
-            val response = httpClient.newCall(request).execute()
-            val body = response.body?.string() ?: throw IOException("空响应")
+            // 读取响应
+            val responseCode = connection.responseCode
+            val reader = BufferedReader(InputStreamReader(
+                if (responseCode == HttpURLConnection.HTTP_OK) 
+                    connection.inputStream 
+                else 
+                    connection.errorStream,
+                "UTF-8"
+            ))
+
+            val response = StringBuilder()
+            var line: String?
+            while (reader.readLine().also { line = it } != null) {
+                response.append(line)
+            }
+            reader.close()
+
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                return@withContext Result.failure(Exception("请求失败: HTTP $responseCode"))
+            }
+
+            val body = response.toString()
+            if (body.isEmpty()) {
+                return@withContext Result.failure(Exception("空响应"))
+            }
 
             val jsonObject = JSONObject(body)
             val success = jsonObject.optBoolean("success", false)
@@ -68,8 +93,4 @@ class QuotaService() {
     }
 
     fun generateAccountId(): String = UUID.randomUUID().toString()
-
-    fun close() {
-        httpClient.dispatcher.executorService.shutdown()
-    }
 }

@@ -14,8 +14,8 @@ android {
         applicationId = "com.apiapp.api_quota_helper"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 6
+        versionName = "1.0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -97,8 +97,7 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
-    // HTTP
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // HTTP - 使用系统自带 HttpURLConnection
 
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
