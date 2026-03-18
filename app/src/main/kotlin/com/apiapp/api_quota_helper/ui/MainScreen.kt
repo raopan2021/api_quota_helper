@@ -153,9 +153,11 @@ fun AccountCard(
 
     val quota = accountWithQuota.quota
     val remainingPercent = quota?.let { (it.remaining / it.amount * 100) } ?: 0.0
+    val isLoading = quota == null && accountWithQuota.error == null
     
-    // 根据剩余额度比例确定颜色
+    // 根据剩余额度比例确定颜色，加载状态用灰色
     val statusColor = when {
+        isLoading -> Color(0xFF9E9E9E) // 灰色-加载中
         remainingPercent > 50 -> Color(0xFF4CAF50) // 绿色
         remainingPercent > 20 -> Color(0xFF2196F3) // 蓝色
         else -> Color(0xFFF44336) // 红色
@@ -213,11 +215,33 @@ fun AccountCard(
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                "${String.format("%.1f", remainingPercent.toDouble())}%",
+                                "${String.format("%.1f", remainingPercent)}%",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = statusColor
                             )
+                        }
+                    } else if (isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(statusColor.copy(alpha = 0.1f))
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = statusColor
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "加载中",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = statusColor
+                                )
+                            }
                         }
                     }
                 }
