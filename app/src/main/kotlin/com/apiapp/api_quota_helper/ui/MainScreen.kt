@@ -279,10 +279,9 @@ fun AccountCard(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text(
-                                "更新于: ${formatRelativeTime(accountWithQuota.lastUpdated)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            RelativeTimeText(
+                                timestamp = accountWithQuota.lastUpdated,
+                                prefix = "更新于: "
                             )
                             ResetCountdown(resetTime = quota.next_reset_time)
                         }
@@ -423,6 +422,24 @@ fun ResetCountdown(resetTime: String) {
             color = MaterialTheme.colorScheme.primary
         )
     }
+}
+
+@Composable
+fun RelativeTimeText(timestamp: Long, prefix: String = "") {
+    var relativeTime by remember { mutableStateOf(formatRelativeTime(timestamp)) }
+
+    LaunchedEffect(timestamp) {
+        while (true) {
+            relativeTime = formatRelativeTime(timestamp)
+            delay(1000)
+        }
+    }
+
+    Text(
+        text = "$prefix$relativeTime",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+    )
 }
 
 private fun calculateCountdown(resetTime: String): String {
