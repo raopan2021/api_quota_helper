@@ -16,8 +16,7 @@ data class MainUiState(
     val isRefreshing: Boolean = false,
     val showAddDialog: Boolean = false,
     val editingAccount: UserAccount? = null,
-    val settings: AppSettings = AppSettings(),
-    val showSettings: Boolean = false
+    val settings: AppSettings = AppSettings()
 )
 
 class MainViewModel(
@@ -148,14 +147,6 @@ class MainViewModel(
             _uiState.update { it.copy(accounts = updated) }
             refreshAccount(account)
         }
-    }
-
-    fun showSettings() {
-        _uiState.update { it.copy(showSettings = true) }
-    }
-
-    fun dismissSettings() {
-        _uiState.update { it.copy(showSettings = false) }
     }
 
     fun updateDarkMode(enabled: Boolean) {
