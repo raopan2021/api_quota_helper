@@ -8,8 +8,6 @@ import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -42,7 +40,7 @@ fun MainScreen(
                 title = { Text("API 额度助手") },
                 actions = {
                     IconButton(onClick = { viewModel.refreshAllQuotas() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新全部")
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
@@ -87,17 +85,21 @@ fun MainScreen(
             }
 
             if (uiState.isRefreshing) {
-                LinearProgressIndicator(modifier = Modifier.align(Alignment.TopCenter))
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                )
             }
         }
+    }
 
-        if (showAddDialog) {
-            AddEditAccountDialog(
-                editingAccount = uiState.editingAccount,
-                onDismiss = { showAddDialog = false },
-                onSave = { username, token -> viewModel.saveAccount(username, token); showAddDialog = false }
-            )
-        }
+    if (showAddDialog) {
+        AddEditAccountDialog(
+            editingAccount = uiState.editingAccount,
+            onDismiss = { showAddDialog = false },
+            onSave = { username, token -> viewModel.saveAccount(username, token); showAddDialog = false }
+        )
     }
 }
 
@@ -114,17 +116,9 @@ fun EmptyState(modifier: Modifier = Modifier) {
             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            "暂无账户",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-        )
+        Text("暂无账户", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            "点击 + 按钮添加账户",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-        )
+        Text("点击 + 按钮添加账户", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
     }
 }
 
@@ -139,10 +133,7 @@ fun AccountCard(
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
+    Card(modifier = Modifier.fillMaxWidth(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -150,51 +141,21 @@ fun AccountCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
-                        Text(
-                            text = accountWithQuota.account.username,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text(accountWithQuota.account.username, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         if (accountWithQuota.quota != null) {
-                            Text(
-                                text = accountWithQuota.quota.plan_name,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
+                            Text(accountWithQuota.quota.plan_name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                         }
                     }
                 }
-
                 Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "更多")
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("刷新") },
-                            onClick = { onRefresh(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Refresh, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("编辑") },
-                            onClick = { onEdit(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Edit, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("删除") },
-                            onClick = { showDeleteConfirm = true; showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Delete, null) }
-                        )
+                    IconButton(onClick = { showMenu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "更多") }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(text = { Text("刷新") }, onClick = { onRefresh(); showMenu = false }, leadingIcon = { Icon(Icons.Default.Refresh, null) })
+                        DropdownMenuItem(text = { Text("编辑") }, onClick = { onEdit(); showMenu = false }, leadingIcon = { Icon(Icons.Default.Edit, null) })
+                        DropdownMenuItem(text = { Text("删除") }, onClick = { showDeleteConfirm = true; showMenu = false }, leadingIcon = { Icon(Icons.Default.Delete, null) })
                     }
                 }
             }
@@ -204,35 +165,18 @@ fun AccountCard(
             when {
                 accountWithQuota.error != null -> {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Error,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Icon(Icons.Default.Error, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "错误: ${accountWithQuota.error}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
+                        Text("错误: ${accountWithQuota.error}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     }
                 }
                 accountWithQuota.quota != null -> {
                     QuotaInfo(quota = accountWithQuota.quota)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "更新于: ${formatTime(accountWithQuota.lastUpdated)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+                    Text("更新于: ${formatTime(accountWithQuota.lastUpdated)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
                 else -> {
-                    Text(
-                        text = "正在加载...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+                    Text("正在加载...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
             }
         }
@@ -243,21 +187,8 @@ fun AccountCard(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("确认删除") },
             text = { Text("确定要删除账户 ${accountWithQuota.account.username} 吗？") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onDelete()
-                        showDeleteConfirm = false
-                    }
-                ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text("取消")
-                }
-            }
+            confirmButton = { TextButton(onClick = { onDelete(); showDeleteConfirm = false }) { Text("删除", color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") } }
         )
     }
 }
@@ -265,37 +196,21 @@ fun AccountCard(
 @Composable
 fun QuotaInfo(quota: QuotaData) {
     Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "已用: ${String.format("%.2f", quota.amount_used)} / ${String.format("%.2f", quota.amount)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = "剩余: ${String.format("%.2f", quota.remaining)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("已用: ${String.format("%.2f", quota.amount_used)} / ${String.format("%.2f", quota.amount)}", style = MaterialTheme.typography.bodyMedium)
+            Text("剩余: ${String.format("%.2f", quota.remaining)}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        LinearProgressIndicator(
-            progress = { quota.usedPercentage.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth(),
-        )
+        LinearProgressIndicator(progress = { quota.usedPercentage.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Column {
-                Text(text = "套餐: ${quota.plan_name}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "状态: ${quota.status}", style = MaterialTheme.typography.bodySmall)
+                Text("套餐: ${quota.plan_name}", style = MaterialTheme.typography.bodySmall)
+                Text("状态: ${quota.status}", style = MaterialTheme.typography.bodySmall)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(text = "剩余天数: ${quota.days_remaining}", style = MaterialTheme.typography.bodySmall)
-                Text(text = "重置: ${quota.next_reset_time}", style = MaterialTheme.typography.bodySmall)
+                Text("剩余天数: ${quota.days_remaining}", style = MaterialTheme.typography.bodySmall)
+                Text("重置: ${quota.next_reset_time}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -315,35 +230,12 @@ fun AddEditAccountDialog(
         title = { Text(if (editingAccount != null) "编辑账户" else "添加账户") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("用户名") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = token,
-                    onValueChange = { token = it },
-                    label = { Text("Token (API Key)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("用户名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = token, onValueChange = { token = it }, label = { Text("Token (API Key)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = { onSave(username, token) },
-                enabled = username.isNotBlank() && token.isNotBlank()
-            ) {
-                Text("保存")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("取消")
-            }
-        }
+        confirmButton = { TextButton(onClick = { onSave(username, token) }, enabled = username.isNotBlank() && token.isNotBlank()) { Text("保存") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
 }
 
