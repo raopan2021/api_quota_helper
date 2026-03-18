@@ -49,6 +49,10 @@ jobs:
     - name: Prebuild Android
       run: npx expo prebuild --platform android --clean
     
+    - name: Fix enableBundleCompression for RN 0.76
+      run: |
+        sed -i 's/enableBundleCompression =/\/\/ enableBundleCompression =/' android/app/build.gradle
+    
     - name: Configure Gradle Kotlin version
       run: |
         # 修复 expo-modules-core Kotlin 编译问题
