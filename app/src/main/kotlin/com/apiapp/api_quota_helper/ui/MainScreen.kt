@@ -1,5 +1,7 @@
 package com.apiapp.api_quota_helper.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,8 +11,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.apiapp.api_quota_helper.BuildConfig
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
 import com.apiapp.api_quota_helper.data.model.QuotaData
 import com.apiapp.api_quota_helper.data.model.UserAccount
@@ -233,7 +237,6 @@ fun AccountCard(
         }
     }
 
-    // 删除确认弹窗
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
@@ -363,6 +366,7 @@ fun SettingsPage(
     onDarkModeChange: (Boolean) -> Unit,
     onRefreshIntervalChange: (Int) -> Unit
 ) {
+    val context = LocalContext.current
     var interval by remember { mutableFloatStateOf(settings.refreshIntervalMinutes.toFloat()) }
 
     Scaffold(
@@ -383,9 +387,9 @@ fun SettingsPage(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // 外观设置
+            // 主题设置
             Text(
-                text = "外观",
+                text = "主题",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -412,16 +416,16 @@ fun SettingsPage(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 自动刷新设置
+            // 定时刷新设置
             Text(
-                text = "自动刷新",
+                text = "定时刷新",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "自动刷新间隔",
+                text = "刷新间隔",
                 style = MaterialTheme.typography.bodyMedium
             )
             Row(
@@ -466,7 +470,7 @@ fun SettingsPage(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "版本: 1.0.1",
+                        text = "版本: ${BuildConfig.VERSION_NAME}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
@@ -475,11 +479,16 @@ fun SettingsPage(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "GitHub: github.com/raopan2021/api_quota_helper",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    TextButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper"))
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Icon(Icons.Default.Link, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("github.com/raopan2021/api_quota_helper")
+                    }
                 }
             }
 
