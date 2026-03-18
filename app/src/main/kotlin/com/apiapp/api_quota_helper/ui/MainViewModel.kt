@@ -94,12 +94,15 @@ class MainViewModel(
     }
 
     fun saveAccount(username: String, token: String) {
+        val trimmedUsername = username.trim()
+        val trimmedToken = token.trim()
+        
         viewModelScope.launch {
             val existingAccount = _uiState.value.editingAccount
             val account = UserAccount(
                 id = existingAccount?.id ?: quotaService.generateAccountId(),
-                username = username,
-                token = token,
+                username = trimmedUsername,
+                token = trimmedToken,
                 createdAt = existingAccount?.createdAt ?: System.currentTimeMillis()
             )
             repository.saveAccount(account)
