@@ -349,13 +349,19 @@ fun AccountCard(
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
                         ) {
-                            RelativeTimeText(
-                                timestamp = accountWithQuota.lastUpdated,
-                                prefix = "更新于: "
-                            )
-                            ResetCountdown(resetTime = quota.next_reset_time)
+                            Column {
+                                RelativeTimeText(
+                                    timestamp = accountWithQuota.lastUpdated,
+                                    prefix = "更新于: "
+                                )
+                                if (quota != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    ResetCountdown(resetTime = quota.next_reset_time)
+                                }
+                            }
                         }
                     }
                     else -> {
@@ -488,18 +494,11 @@ fun ResetCountdown(resetTime: String) {
     }
 
     if (countdown.isNotEmpty()) {
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                "下次重置: $countdown",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                "(${resetTime})",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-        }
+        Text(
+            "距重置: $countdown",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 
