@@ -1,8 +1,6 @@
-# Add project specific ProGuard rules here.
-# By default, the flags in this file are appended to flags specified
-# in /opt/android-sdk/tools/proguard/proguard-android.txt
+# API Quota Helper ProGuard Rules
 
-# Keep Kotlin serialization
+# Kotlin 序列化
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt
 
@@ -20,3 +18,27 @@
 -keepclasseswithmembers class com.apiapp.api_quota_helper.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# Ktor
+-keep class io.ktor.** { *; }
+-dontwarn io.ktor.**
+-dontwarn kotlinx.coroutines.**
+
+# OkHttp
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn org.conscrypt.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+
+# SLF4J (from Ktor)
+-dontwarn org.slf4j.**
+-keep class org.slf4j.** { *; }
+
+# AndroidX
+-keep class androidx.** { *; }
+-dontwarn androidx.**
+
+# Compose
+-dontwarn androidx.compose.**
+-keep class androidx.compose.** { *; }
