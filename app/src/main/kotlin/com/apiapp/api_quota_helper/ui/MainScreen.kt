@@ -1,14 +1,18 @@
 package com.apiapp.api_quota_helper.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
@@ -134,105 +138,186 @@ fun AccountCard(
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
+    val quota = accountWithQuota.quota
+    val remainingPercent = quota?.let { (it.remaining / it.amount * 100).toInt() } ?: 0
+    
+    // 根据剩余额度比例确定颜色
+    val statusColor = when {
+        remainingPercent > 50 -> Color(0xFF4CAF50) // 绿色
+        remainingPercent > 20 -> Color(0xFF2196F3) // 蓝色
+        else -> Color(0xFFF44336) // 红色
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.AccountCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            accountWithQuota.account.username,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+        Column {
+            // 顶部状态条
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(statusColor)
+            )
+            
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = statusColor,
+                            modifier = Modifier.size(40.dp)
                         )
-                        if (accountWithQuota.quota != null) {
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
                             Text(
-                                accountWithQuota.quota!!.plan_name,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                accountWithQuota.account.username,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (quota != null) {
+                                Text(
+                                    quota.plan_name,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+                    
+                    // 剩余额度百分比
+                    if (quota != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(statusColor.copy(alpha = 0.1f))
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                "${remainingPercent}%",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = statusColor
                             )
                         }
                     }
                 }
-                Box {
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "更多")
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("刷新") },
-                            onClick = { onRefresh(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Refresh, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("编辑") },
-                            onClick = { onEdit(); showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Edit, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("删除") },
-                            onClick = { showDeleteConfirm = true; showMenu = false },
-                            leadingIcon = { Icon(Icons.Default.Delete, null) }
-                        )
-                    }
-                }
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            when {
-                accountWithQuota.error != null -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Error,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "错误: ${accountWithQuota.error}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
+                when {
+                    accountWithQuota.error != null -> {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "错误: ${accountWithQuota.error}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
-                }
-                accountWithQuota.quota != null -> {
-                    QuotaInfo(quota = accountWithQuota.quota!!)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                    quota != null -> {
+                        // 额度信息
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    "已用 ${String.format("%.1f", quota.amount_used)}",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    "额度 ${String.format("%.1f", quota.amount)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    "剩余 ${String.format("%.1f", quota.remaining)}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = statusColor
+                                )
+                                Text(
+                                    "剩余${quota.days_remaining}天",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // 进度条
+                        LinearProgressIndicator(
+                            progress = { quota.usedPercentage.coerceIn(0f, 1f) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = statusColor,
+                            trackColor = statusColor.copy(alpha = 0.2f),
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "更新于: ${formatRelativeTime(accountWithQuota.lastUpdated)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                            ResetCountdown(resetTime = quota.next_reset_time)
+                        }
+                    }
+                    else -> {
                         Text(
-                            "更新于: ${formatRelativeTime(accountWithQuota.lastUpdated)}",
-                            style = MaterialTheme.typography.bodySmall,
+                            "正在加载...",
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
-                        ResetCountdown(resetTime = accountWithQuota.quota!!.next_reset_time)
                     }
                 }
-                else -> {
-                    Text(
-                        "正在加载...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 操作按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onRefresh) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("刷新")
+                    }
+                    TextButton(onClick = onEdit) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("编辑")
+                    }
+                    TextButton(onClick = { showDeleteConfirm = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("删除")
+                    }
                 }
             }
         }
@@ -254,45 +339,6 @@ fun AccountCard(
                 }
             }
         )
-    }
-}
-
-@Composable
-fun QuotaInfo(quota: QuotaData) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                "已用: ${String.format("%.2f", quota.amount_used)} / ${String.format("%.2f", quota.amount)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                "剩余: ${String.format("%.2f", quota.remaining)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        LinearProgressIndicator(
-            progress = { quota.usedPercentage.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text("套餐: ${quota.plan_name}", style = MaterialTheme.typography.bodySmall)
-                Text("状态: ${quota.status}", style = MaterialTheme.typography.bodySmall)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("剩余天数: ${quota.days_remaining}", style = MaterialTheme.typography.bodySmall)
-                Text("重置: ${quota.next_reset_time}", style = MaterialTheme.typography.bodySmall)
-            }
-        }
     }
 }
 
@@ -340,11 +386,6 @@ fun AddEditAccountDialog(
             }
         }
     )
-}
-
-fun formatTime(timestamp: Long): String {
-    if (timestamp == 0L) return "从未"
-    return SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
 }
 
 fun formatRelativeTime(timestamp: Long): String {
