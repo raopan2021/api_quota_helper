@@ -64,14 +64,8 @@ class _HomePageState extends State<HomePage> {
     // 监听主题变化，重新启动定时器
     final themeProvider = context.watch<ThemeProvider>();
     
-    // 当刷新间隔变化时，重新启动定时器
-    if (_refreshTimer != null) {
-      final currentInterval = _refreshTimer?.repeat ? 
-        (themeProvider.refreshInterval > 0) : 0;
-      if (currentInterval == null || currentInterval == 0) {
-        _startTimerRefresh();
-      }
-    }
+    // 刷新间隔变化时重新启动定时器
+    _startTimerRefresh();
     
     return Scaffold(
       appBar: AppBar(
