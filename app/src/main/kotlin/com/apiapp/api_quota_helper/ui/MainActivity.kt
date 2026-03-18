@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -38,12 +38,6 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var currentScreen by remember { mutableStateOf("main") }
-                    var previousScreen by remember { mutableStateOf("main") }
-                    
-                    // 收集状态变化来确定动画方向
-                    LaunchedEffect(currentScreen) {
-                        previousScreen = currentScreen
-                    }
                     
                     // 处理返回键
                     val activity = this
@@ -58,47 +52,84 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     
+                    // 页面切换动画
                     AnimatedContent(
                         targetState = currentScreen,
                         transitionSpec = {
+                            val duration = 400
+                            val easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f) // fastOutSlowIn approximation
+                            
                             when (targetState) {
                                 "main" -> {
-                                    if (initialState != "main") {
-                                        slideInHorizontally(
-                                            animationSpec = tween(300),
-                                            initialOffsetX = { -it }
-                                        ) + fadeIn(animationSpec = tween(300)) togetherWith
+                                    // 从左边滑入 + 缩放
+                                    (slideInHorizontally(
+                                        animationSpec = tween(duration, easing = easing),
+                                        initialOffsetX = { -it }
+                                    ) + fadeIn(
+                                        animationSpec = tween(duration, easing = easing)
+                                    ) + scaleIn(
+                                        animationSpec = tween(duration, easing = easing),
+                                        initialScale = 0.92f
+                                    )).togetherWith(
                                         slideOutHorizontally(
-                                            animationSpec = tween(300),
+                                            animationSpec = tween(duration, easing = easing),
                                             targetOffsetX = { it }
-                                        ) + fadeOut(animationSpec = tween(300))
-                                    } else {
-                                        fadeIn() togetherWith fadeOut()
-                                    }
+                                        ) + fadeOut(
+                                            animationSpec = tween(duration, easing = easing)
+                                        ) + scaleOut(
+                                            animationSpec = tween(duration, easing = easing),
+                                            targetScale = 1.08f
+                                        )
+                                    )
                                 }
                                 "settings" -> {
-                                    slideInHorizontally(
-                                        animationSpec = tween(300),
+                                    // 从右边滑入 + 缩放
+                                    (slideInHorizontally(
+                                        animationSpec = tween(duration, easing = easing),
                                         initialOffsetX = { it }
-                                    ) + fadeIn(animationSpec = tween(300)) togetherWith
-                                    slideOutHorizontally(
-                                        animationSpec = tween(300),
-                                        targetOffsetX = { -it }
-                                    ) + fadeOut(animationSpec = tween(300))
+                                    ) + fadeIn(
+                                        animationSpec = tween(duration, easing = easing)
+                                    ) + scaleIn(
+                                        animationSpec = tween(duration, easing = easing),
+                                        initialScale = 0.88f
+                                    )).togetherWith(
+                                        slideOutHorizontally(
+                                            animationSpec = tween(duration, easing = easing),
+                                            targetOffsetX = { -it / 3 }
+                                        ) + fadeOut(
+                                            animationSpec = tween(duration, easing = easing)
+                                        ) + scaleOut(
+                                            animationSpec = tween(duration, easing = easing),
+                                            targetScale = 0.95f
+                                        )
+                                    )
                                 }
                                 "logs" -> {
-                                    slideInHorizontally(
-                                        animationSpec = tween(300),
+                                    // 从右边滑入 + 淡入淡出
+                                    (slideInHorizontally(
+                                        animationSpec = tween(duration, easing = easing),
                                         initialOffsetX = { it }
-                                    ) + fadeIn(animationSpec = tween(300)) togetherWith
-                                    slideOutHorizontally(
-                                        animationSpec = tween(300),
-                                        targetOffsetX = { -it }
-                                    ) + fadeOut(animationSpec = tween(300))
+                                    ) + fadeIn(
+                                        animationSpec = tween(duration, easing = easing)
+                                    ) + scaleIn(
+                                        animationSpec = tween(duration, easing = easing),
+                                        initialScale = 0.9f
+                                    )).togetherWith(
+                                        slideOutHorizontally(
+                                            animationSpec = tween(duration, easing = easing),
+                                            targetOffsetX = { -it / 3 }
+                                        ) + fadeOut(
+                                            animationSpec = tween(duration, easing = easing)
+                                        ) + scaleOut(
+                                            animationSpec = tween(duration, easing = easing),
+                                            targetScale = 0.95f
+                                        )
+                                    )
                                 }
                                 else -> fadeIn() togetherWith fadeOut()
                             }
                         },
+                        modifier = Modifier.fillMaxSize(),
                         label = "screen_transition"
                     ) { screen ->
                         when (screen) {
