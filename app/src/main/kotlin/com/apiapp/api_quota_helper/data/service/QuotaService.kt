@@ -71,6 +71,7 @@ class QuotaService() {
             // 读取响应
             val responseCode = connection.responseCode
             LogBuffer.d(TAG, "响应码: $responseCode")
+            LogBuffer.d(TAG, "响应消息: ${connection.responseMessage}")
             
             val reader = BufferedReader(InputStreamReader(
                 if (responseCode == HttpURLConnection.HTTP_OK) 
