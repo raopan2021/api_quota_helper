@@ -25,6 +25,9 @@ import java.util.*
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState()
+    var showSettings by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -34,7 +37,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     IconButton(onClick = { viewModel.refreshAllQuotas() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新全部")
                     }
-                    IconButton(onClick = { viewModel.showSettings() }) {
+                    IconButton(onClick = { showSettings = true }) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
                 }
@@ -89,13 +92,18 @@ fun MainScreen(viewModel: MainViewModel) {
             )
         }
 
-        if (uiState.showSettings) {
-            SettingsPage(
-                settings = uiState.settings,
-                onDismiss = { viewModel.dismissSettings() },
-                onDarkModeChange = { viewModel.updateDarkMode(it) },
-                onRefreshIntervalChange = { viewModel.updateRefreshInterval(it) }
-            )
+        if (showSettings) {
+            ModalBottomSheet(
+                onDismissRequest = { showSettings = false },
+                sheetState = sheetState
+            ) {
+                SettingsContent(
+                    settings = uiState.settings,
+                    onDarkModeChange = { viewModel.updateDarkMode(it) },
+                    onRefreshIntervalChange = { viewModel.updateRefreshInterval(it) },
+                    onDismiss = { showSettings = false }
+                )
+            }
         }
     }
 }
@@ -358,167 +366,179 @@ fun AddEditAccountDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsPage(
+fun SettingsContent(
     settings: com.apiapp.api_quota_helper.data.model.AppSettings,
-    onDismiss: () -> Unit,
     onDarkModeChange: (Boolean) -> Unit,
-    onRefreshIntervalChange: (Int) -> Unit
+    onRefreshIntervalChange: (Int) -> Unit,
+    onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     var interval by remember { mutableFloatStateOf(settings.refreshIntervalMinutes.toFloat()) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("设置") },
-                navigationIcon = {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .padding(bottom = 32.dp)
+    ) {
+        Text(
+            text = "设置",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 主题设置
+        Text(
+            text = "主题",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // 主题设置
-            Text(
-                text = "主题",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (settings.darkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
-                        contentDescription = null
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("暗黑模式")
-                }
-                Switch(
-                    checked = settings.darkMode,
-                    onCheckedChange = onDarkModeChange
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 定时刷新设置
-            Text(
-                text = "定时刷新",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = "刷新间隔",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Slider(
-                    value = interval,
-                    onValueChange = { interval = it },
-                    onValueChangeFinished = { onRefreshIntervalChange(interval.toInt()) },
-                    valueRange = 5f..120f,
-                    steps = 22,
-                    modifier = Modifier.weight(1f)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (settings.darkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
+                    contentDescription = null
                 )
                 Spacer(modifier = Modifier.width(8.dp))
+                Text("暗黑模式")
+            }
+            Switch(
+                checked = settings.darkMode,
+                onCheckedChange = onDarkModeChange
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 定时刷新设置
+        Text(
+            text = "定时刷新",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = "刷新间隔",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Slider(
+                value = interval,
+                onValueChange = { interval = it },
+                onValueChangeFinished = { onRefreshIntervalChange(interval.toInt()) },
+                valueRange = 5f..120f,
+                steps = 22,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "${interval.toInt()} 分钟",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 关于
+        Text(
+            text = "关于",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
                 Text(
-                    text = "${interval.toInt()} 分钟",
+                    text = "API 额度助手",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "版本: ${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodyMedium
                 )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // 关于
-            Text(
-                text = "关于",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "作者: raopan",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "API 额度助手",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "版本: ${BuildConfig.VERSION_NAME}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "作者: raopan",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    TextButton(
+                    // GitHub 按钮
+                    FilledTonalButton(
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper"))
                             context.startActivity(intent)
                         }
                     ) {
-                        Icon(Icons.Default.Link, contentDescription = null)
+                        Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("github.com/raopan2021/api_quota_helper")
+                        Text("GitHub")
+                    }
+                    
+                    // 浏览器按钮
+                    FilledTonalButton(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases"))
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("下载")
                     }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-            // 桌面组件说明
-            Text(
-                text = "桌面组件",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Card(
-                modifier = Modifier.fillMaxWidth()
+        // 桌面组件说明
+        Text(
+            text = "桌面组件",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "添加桌面组件方法：",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "1. 长按手机桌面\n2. 选择「小组件」\n3. 找到「API额度」并添加",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
+                Text(
+                    text = "添加桌面组件方法：",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "1. 长按手机桌面\n2. 选择「小组件」\n3. 找到「API额度」并添加",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
         }
     }
