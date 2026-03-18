@@ -11,7 +11,30 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.UUID
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
+
+object LogBuffer {
+    private val logs = ConcurrentLinkedQueue<String>()
+    private val maxSize = 100
+    
+    fun add(tag: String, message: String) {
+        val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        val log = "[$time] $tag: $message"
+        logs.offer(log)
+        while (logs.size > maxSize) {
+            logs.poll()
+        }
+    }
+    
+    fun d(tag: String, message: String) = add(tag, message)
+    fun e(tag: String, message: String) = add(tag, "ERROR: $message")
+    
+    fun getAll(): String = logs.joinToString("\n")
+    
+    fun clear() = logs.clear()
+}
 
 class QuotaService() {
 
@@ -20,8 +43,8 @@ class QuotaService() {
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> = withContext(Dispatchers.IO) {
         try {
             val url = URL("http://v2api.aicodee.com/chaxun/query")
-            Log.d(TAG, "请求URL: http://v2api.aicodee.com/chaxun/query")
-            Log.d(TAG, "请求参数: username=${account.username}, token=${account.token}")
+            LogBuffer.d(TAG, "请求URL: http://v2api.aicodee.com/chaxun/query")
+            LogBuffer.d(TAG, "请求参数: username=${account.username}")
             
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
@@ -38,7 +61,7 @@ class QuotaService() {
                 put("token", account.token)
             }.toString()
             
-            Log.d(TAG, "请求体: $jsonBody")
+            LogBuffer.d(TAG, "请求体: $jsonBody")
 
             OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
                 writer.write(jsonBody)
@@ -47,7 +70,7 @@ class QuotaService() {
 
             // 读取响应
             val responseCode = connection.responseCode
-            Log.d(TAG, "响应码: $responseCode")
+            LogBuffer.d(TAG, "响应码: $responseCode")
             
             val reader = BufferedReader(InputStreamReader(
                 if (responseCode == HttpURLConnection.HTTP_OK) 
@@ -65,13 +88,16 @@ class QuotaService() {
             reader.close()
 
             val body = response.toString()
-            Log.d(TAG, "响应体: $body")
+            LogBuffer.d(TAG, "响应体: $body")
 
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext Result.failure(Exception("请求失败: HTTP $responseCode, 响应: $body"))
+                val error = "请求失败: HTTP $responseCode, 响应: $body"
+                LogBuffer.e(TAG, error)
+                return@withContext Result.failure(Exception(error))
             }
 
             if (body.isEmpty()) {
+                LogBuffer.e(TAG, "空响应")
                 return@withContext Result.failure(Exception("空响应"))
             }
 
@@ -80,11 +106,15 @@ class QuotaService() {
 
             if (!success) {
                 val message = jsonObject.optString("message", "查询失败")
+                LogBuffer.e(TAG, message)
                 return@withContext Result.failure(Exception(message))
             }
 
             val data = jsonObject.optJSONObject("data")
-                ?: return@withContext Result.failure(Exception("数据为空"))
+                ?: run {
+                    LogBuffer.e(TAG, "数据为空")
+                    return@withContext Result.failure(Exception("数据为空"))
+                }
 
             val quotaData = QuotaData(
                 subscription_id = data.optInt("subscription_id", 0),
@@ -97,13 +127,13 @@ class QuotaService() {
                 status = data.optString("status", "")
             )
 
-            Log.d(TAG, "解析成功: $quotaData")
+            LogBuffer.d(TAG, "解析成功: plan=${quotaData.plan_name}, used=${quotaData.amount_used}/${quotaData.amount}")
             Result.success(quotaData)
         } catch (e: Exception) {
-            Log.e(TAG, "请求异常: ${e.message}", e)
+            LogBuffer.e(TAG, "${e.message}")
             Result.failure(e)
         }
     }
 
-    fun generateAccountId(): String = UUID.randomUUID().toString()
+    fun generateAccountId(): String = java.util.UUID.randomUUID().toString()
 }
