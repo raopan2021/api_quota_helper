@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/account_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/widget_service.dart';
 import 'add_account_page.dart';
 import 'settings_page.dart';
@@ -14,6 +16,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final WidgetService _widgetService = WidgetService();
+  Timer? _refreshTimer;
 
   @override
   void initState() {
@@ -21,12 +24,54 @@ class _HomePageState extends State<HomePage> {
     // 启动时刷新额度
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AccountProvider>().refreshQuota();
+      _startTimerRefresh();
     });
   }
 
   @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startTimerRefresh() {
+    _refreshTimer?.cancel();
+    final themeProvider = context.read<ThemeProvider>();
+    final interval = themeProvider.refreshInterval;
+    
+    if (interval > 0) {
+      _refreshTimer = Timer.periodic(
+        Duration(minutes: interval),
+        (_) => _doRefresh(),
+      );
+    }
+  }
+
+  void _doRefresh() {
+    if (mounted) {
+      final provider = context.read<AccountProvider>();
+      provider.refreshQuota();
+      
+      final account = provider.selectedAccount;
+      if (account != null) {
+        _widgetService.updateWidget(account);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // 监听主题变化，重新启动定时器
+    final themeProvider = context.watch<ThemeProvider>();
+    
+    // 当刷新间隔变化时，重新启动定时器
+    if (_refreshTimer != null) {
+      final currentInterval = _refreshTimer?.repeat ? 
+        (themeProvider.refreshInterval > 0) : 0;
+      if (currentInterval == null || currentInterval == 0) {
+        _startTimerRefresh();
+      }
+    }
     
     return Scaffold(
       appBar: AppBar(
@@ -34,16 +79,20 @@ class _HomePageState extends State<HomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SettingsPage()),
-            ),
+            onPressed: () {
+              _refreshTimer?.cancel(); // 暂停定时器
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              ).then((_) {
+                // 返回后重新启动定时器
+                _startTimerRefresh();
+              });
+            },
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              context.read<AccountProvider>().refreshAll();
-            },
+            onPressed: _doRefresh,
           ),
         ],
       ),
@@ -106,6 +155,11 @@ class _HomePageState extends State<HomePage> {
           // 详细信息
           if (info != null && !info.containsKey('error')) ...[
             _buildDetailCard(info),
+          ],
+          
+          // 错误信息
+          if (info != null && info.containsKey('error')) ...[
+            _buildErrorCard(info['error']),
           ],
           
           const SizedBox(height: 16),
@@ -204,7 +258,7 @@ class _HomePageState extends State<HomePage> {
             
             if (isLoading)
               const CircularProgressIndicator()
-            else if (info != null)
+            else if (info != null && !info.containsKey('error'))
               Column(
                 children: [
                   Text(
@@ -217,6 +271,44 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ],
               ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(String error) {
+    return Card(
+      color: Colors.red.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red[700]),
+                const SizedBox(width: 8),
+                Text(
+                  '查询失败',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red[700],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: TextStyle(color: Colors.red[700]),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '请检查 API Key 和接口地址是否正确',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
           ],
         ),
       ),

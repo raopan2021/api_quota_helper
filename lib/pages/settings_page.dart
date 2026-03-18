@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -9,7 +10,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _isDarkMode = false;
+  int _refreshInterval = 5;
 
   @override
   void initState() {
@@ -18,22 +19,16 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+    final provider = context.read<ThemeProvider>();
     setState(() {
-      _isDarkMode = prefs.getBool('darkMode') ?? false;
-    });
-  }
-
-  Future<void> _toggleDarkMode(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('darkMode', value);
-    setState(() {
-      _isDarkMode = value;
+      _refreshInterval = provider.refreshInterval;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = context.watch<ThemeProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -45,9 +40,28 @@ class _SettingsPageState extends State<SettingsPage> {
             leading: const Icon(Icons.dark_mode),
             title: const Text('暗黑模式'),
             trailing: Switch(
-              value: _isDarkMode,
-              onChanged: _toggleDarkMode,
+              value: themeProvider.isDarkMode,
+              onChanged: (value) => themeProvider.setDarkMode(value),
             ),
+          ),
+          const Divider(),
+          
+          // 定时刷新设置
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text('定时刷新', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          ListTile(
+            leading: const Icon(Icons.timer),
+            title: const Text('自动刷新间隔'),
+            subtitle: Text('${_refreshInterval} 分钟'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _showRefreshIntervalDialog(),
+          ),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('说明'),
+            subtitle: const Text('关闭应用后定时刷新将停止'),
           ),
           const Divider(),
           
@@ -56,23 +70,20 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: EdgeInsets.all(16),
             child: Text('关于', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
-          ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('软件作者'),
-            subtitle: const Text('API Quota Helper'),
+          const ListTile(
+            leading: Icon(Icons.info),
+            title: Text('软件作者'),
+            subtitle: Text('API Quota Helper'),
           ),
-          ListTile(
-            leading: const Icon(Icons.code),
-            title: const Text('GitHub'),
-            subtitle: const Text('https://github.com/raopan2021/api_quota_helper'),
-            onTap: () {
-              // 可以添加打开链接功能
-            },
+          const ListTile(
+            leading: Icon(Icons.code),
+            title: Text('GitHub'),
+            subtitle: Text('https://github.com/raopan2021/api_quota_helper'),
           ),
-          ListTile(
-            leading: const Icon(Icons.history),
-            title: const Text('版本'),
-            subtitle: const Text('1.0.0'),
+          const ListTile(
+            leading: Icon(Icons.history),
+            title: Text('版本'),
+            subtitle: Text('1.0.0'),
           ),
           const Divider(),
           
@@ -87,6 +98,34 @@ class _SettingsPageState extends State<SettingsPage> {
             subtitle: Text('1. 点击 + 添加账户\n2. 输入用户名、API Key 和接口地址\n3. 返回主页查看额度\n4. 可添加桌面小组件'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showRefreshIntervalDialog() {
+    final intervals = [1, 3, 5, 10, 15, 30, 60];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('选择刷新间隔'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: intervals.map((interval) {
+            return RadioListTile<int>(
+              title: Text('$interval 分钟'),
+              value: interval,
+              groupValue: _refreshInterval,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _refreshInterval = value);
+                  context.read<ThemeProvider>().setRefreshInterval(value);
+                  Navigator.pop(context);
+                }
+              },
+            );
+          }).toList(),
+        ),
       ),
     );
   }

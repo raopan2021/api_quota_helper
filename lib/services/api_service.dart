@@ -13,16 +13,23 @@ class ApiService {
           ? account.apiUrl 
           : 'http://v2api.aicodee.com/chaxun';
       
+      print('API Request: $baseUrl/query');
+      print('Username: ${account.name}');
+      
       final response = await _dio.post(
         '$baseUrl/query',
         options: Options(
           headers: {'Content-Type': 'application/json'},
+          sendTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
         ),
         data: {
           'username': account.name,
           'token': account.apiKey,
         },
       );
+      
+      print('API Response: ${response.data}');
       
       final data = response.data;
       
@@ -45,7 +52,11 @@ class ApiService {
           'error': data['message'] ?? '查询失败',
         };
       }
+    } on DioException catch (e) {
+      print('DioError: ${e.type} - ${e.message}');
+      return _parseError(e);
     } catch (e) {
+      print('Error: $e');
       return _parseError(e);
     }
   }
@@ -61,8 +72,31 @@ class ApiService {
   /// 解析错误信息
   Map<String, dynamic> _parseError(dynamic e) {
     if (e is DioException) {
+      String errorMsg;
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+          errorMsg = '连接超时，请检查网络';
+          break;
+        case DioExceptionType.sendTimeout:
+          errorMsg = '发送请求超时';
+          break;
+        case DioExceptionType.receiveTimeout:
+          errorMsg = '接收响应超时';
+          break;
+        case DioExceptionType.badResponse:
+          errorMsg = '服务器响应错误: ${e.response?.statusCode}';
+          break;
+        case DioExceptionType.cancel:
+          errorMsg = '请求被取消';
+          break;
+        case DioExceptionType.connectionError:
+          errorMsg = '连接失败，请检查网络或接口地址';
+          break;
+        default:
+          errorMsg = e.message ?? 'Unknown error';
+      }
       return {
-        'error': e.response?.statusMessage ?? e.message ?? 'Unknown error',
+        'error': errorMsg,
         'statusCode': e.response?.statusCode,
       };
     }
