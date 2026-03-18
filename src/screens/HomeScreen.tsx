@@ -1,3 +1,9 @@
+/**
+ * 首页组件
+ * 显示账户列表和额度信息
+ * 作者: raopan2021
+ */
+
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -13,7 +19,12 @@ import {
 import { useApp } from '../context/AppContext';
 import { getThemeColors } from '../theme';
 
+/**
+ * 首页屏幕组件
+ * 主页面，显示账户列表、额度信息和账户管理功能
+ */
 export const HomeScreen: React.FC = () => {
+  // 从上下文获取状态和方法
   const {
     accounts,
     selectedAccount,
@@ -29,7 +40,10 @@ export const HomeScreen: React.FC = () => {
   const colors = getThemeColors(darkMode);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 定时刷新
+  /**
+   * 定时刷新功能
+   * 根据设置的间隔自动刷新额度
+   */
   useEffect(() => {
     if (refreshInterval > 0 && selectedAccount) {
       timerRef.current = setInterval(() => {
@@ -37,6 +51,7 @@ export const HomeScreen: React.FC = () => {
       }, refreshInterval * 60 * 1000);
     }
     
+    // 清理定时器
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -44,6 +59,7 @@ export const HomeScreen: React.FC = () => {
     };
   }, [refreshInterval, selectedAccount]);
 
+  // 没有账户时显示空状态
   if (accounts.length === 0) {
     return (
       <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
@@ -54,6 +70,7 @@ export const HomeScreen: React.FC = () => {
     );
   }
 
+  // 获取当前选中账户的额度信息
   const quota = selectedAccount?.quotaInfo;
   const percent = parseFloat(quota?.percent || '0');
 
@@ -68,7 +85,7 @@ export const HomeScreen: React.FC = () => {
         />
       }
     >
-      {/* 账户选择器 */}
+      {/* 账户选择器 - 当有多个账户时显示 */}
       {accounts.length > 1 && (
         <View style={[styles.accountSelector, { backgroundColor: colors.card }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -95,18 +112,20 @@ export const HomeScreen: React.FC = () => {
         </View>
       )}
 
-      {/* 额度卡片 */}
+      {/* 额度卡片 - 显示主要额度信息 */}
       <View style={[styles.quotaCard, { backgroundColor: colors.card }]}>
+        {/* 订阅套餐名称 */}
         <Text style={[styles.subscription, { color: colors.text }]}>
           {quota?.subscription || '未设置'}
         </Text>
         
+        {/* 剩余天数 */}
         <Text style={[styles.daysRemaining, { color: colors.primary }]}>
           {quota?.daysRemaining || '0'} 天
         </Text>
         <Text style={[styles.daysLabel, { color: colors.textSecondary }]}>剩余时间</Text>
 
-        {/* 环形进度条 */}
+        {/* 环形进度条 - 显示已使用百分比 */}
         <View style={styles.progressContainer}>
           <View style={[styles.progressCircle, { borderColor: colors.border }]}>
             <Text style={[styles.progressPercent, { color: colors.text }]}>
@@ -116,9 +135,11 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* 加载状态 */}
         {isLoading ? (
           <ActivityIndicator size="large" color={colors.primary} />
         ) : quota && !quota.error ? (
+          // 额度详情
           <View style={styles.quotaDetails}>
             <Text style={[styles.quotaText, { color: colors.text }]}>
               剩余: ${quota.remaining}
@@ -130,7 +151,7 @@ export const HomeScreen: React.FC = () => {
         ) : null}
       </View>
 
-      {/* 错误提示 */}
+      {/* 错误提示 - 当查询失败时显示 */}
       {quota?.error && (
         <View style={[styles.errorCard, { backgroundColor: '#fff0f0' }]}>
           <Text style={[styles.errorTitle, { color: colors.error }]}>查询失败</Text>
@@ -138,26 +159,31 @@ export const HomeScreen: React.FC = () => {
         </View>
       )}
 
-      {/* 详细信息 */}
+      {/* 详细信息 - 当查询成功时显示 */}
       {quota && !quota.error && (
         <View style={[styles.detailCard, { backgroundColor: colors.card }]}>
           <Text style={[styles.detailTitle, { color: colors.text }]}>详细信息</Text>
+          
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>套餐名称</Text>
             <Text style={[styles.detailValue, { color: colors.text }]}>{quota.subscription}</Text>
           </View>
+          
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>到期时间</Text>
             <Text style={[styles.detailValue, { color: colors.text }]}>{quota.endTime}</Text>
           </View>
+          
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>已用额度</Text>
             <Text style={[styles.detailValue, { color: colors.text }]}>${quota.used}</Text>
           </View>
+          
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>剩余额度</Text>
             <Text style={[styles.detailValue, { color: colors.text }]}>${quota.remaining}</Text>
           </View>
+          
           <View style={styles.detailRow}>
             <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>额度刷新时间</Text>
             <Text style={[styles.detailValue, { color: colors.text }]}>{quota.nextResetTime}</Text>
@@ -165,7 +191,7 @@ export const HomeScreen: React.FC = () => {
         </View>
       )}
 
-      {/* 账户列表 */}
+      {/* 账户列表 - 显示所有已添加的账户 */}
       <View style={[styles.accountList, { backgroundColor: colors.card }]}>
         <Text style={[styles.accountListTitle, { color: colors.text }]}>已添加的账户</Text>
         {accounts.map(account => (
@@ -175,14 +201,16 @@ export const HomeScreen: React.FC = () => {
               <Text style={[styles.accountUrl, { color: colors.textSecondary }]}>{account.apiUrl}</Text>
             </View>
             <View style={styles.accountActions}>
+              {/* 编辑按钮 */}
               <TouchableOpacity
                 onPress={() => {
-                  // 导航到编辑页面
+                  // TODO: 导航到编辑页面
                 }}
                 style={styles.actionButton}
               >
                 <Text style={[styles.actionText, { color: colors.primary }]}>编辑</Text>
               </TouchableOpacity>
+              {/* 删除按钮 */}
               <TouchableOpacity
                 onPress={() => {
                   Alert.alert(
@@ -206,10 +234,12 @@ export const HomeScreen: React.FC = () => {
   );
 };
 
+// 样式定义
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // 空状态样式
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -226,6 +256,7 @@ const styles = StyleSheet.create({
   emptySubtitle: {
     fontSize: 14,
   },
+  // 账户选择器样式
   accountSelector: {
     padding: 16,
   },
@@ -242,6 +273,7 @@ const styles = StyleSheet.create({
   accountChipTextActive: {
     color: '#fff',
   },
+  // 额度卡片样式
   quotaCard: {
     margin: 16,
     padding: 24,
@@ -261,6 +293,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 24,
   },
+  // 进度条样式
   progressContainer: {
     alignItems: 'center',
     marginBottom: 24,
@@ -289,6 +322,7 @@ const styles = StyleSheet.create({
   quotaSubtext: {
     fontSize: 14,
   },
+  // 错误卡片样式
   errorCard: {
     margin: 16,
     padding: 16,
@@ -300,6 +334,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorText: {},
+  // 详情卡片样式
   detailCard: {
     margin: 16,
     padding: 16,
@@ -320,6 +355,7 @@ const styles = StyleSheet.create({
   detailValue: {
     fontWeight: '500',
   },
+  // 账户列表样式
   accountList: {
     margin: 16,
     padding: 16,

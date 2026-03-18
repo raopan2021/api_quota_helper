@@ -1,8 +1,9 @@
-# Dependencies
+# 依赖目录
 node_modules/
 
-# React Native
+# Expo
 .expo/
+.expo-shared/
 dist/
 npm-debug.*
 *.jks
@@ -12,7 +13,7 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 
-# Xcode
+# iOS (Xcode)
 build/
 *.pbxuser
 !default.pbxuser
@@ -30,23 +31,26 @@ DerivedData
 *.ipa
 *.xcuserstate
 ios/.xcode.env.local
+ios/Pods/
+ios/*.xcworkspace
 
 # Android
 android/app/build
 android/.gradle
 android/build
+android/gradle
 
 # GitHub Actions
 .github/workflows/
 
-# Misc
+# 本地配置
 .DS_Store
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Logs
+# 日志
 logs
 *.log
 
