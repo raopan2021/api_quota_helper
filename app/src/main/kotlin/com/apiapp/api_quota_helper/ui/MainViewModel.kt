@@ -104,8 +104,23 @@ class MainViewModel(
             )
             repository.saveAccount(account)
             dismissDialog()
-            // 刷新该账户的额度
-            refreshAccount(account)
+            
+            // 直接刷新新账户的额度（不等 Flow 更新）
+            val result = quotaService.queryQuota(account)
+            val newAwq = AccountWithQuota(
+                account = account,
+                quota = result.getOrNull(),
+                error = result.exceptionOrNull()?.message,
+                lastUpdated = System.currentTimeMillis()
+            )
+            val currentAccounts = _uiState.value.accounts.toMutableList()
+            val existingIndex = currentAccounts.indexOfFirst { it.account.id == account.id }
+            if (existingIndex >= 0) {
+                currentAccounts[existingIndex] = newAwq
+            } else {
+                currentAccounts.add(newAwq)
+            }
+            _uiState.update { it.copy(accounts = currentAccounts) }
         }
     }
 
