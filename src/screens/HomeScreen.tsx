@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  useColorScheme,
 } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { useNavigation } from '@react-navigation/native';
+import { getThemeColors } from '../theme';
 
 export const HomeScreen: React.FC = () => {
   const {
@@ -21,9 +22,11 @@ export const HomeScreen: React.FC = () => {
     refreshQuota,
     selectAccount,
     deleteAccount,
+    darkMode,
   } = useApp();
   
-  const navigation = useNavigation<any>();
+  const colorScheme = useColorScheme();
+  const colors = getThemeColors(darkMode);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 定时刷新
@@ -43,33 +46,38 @@ export const HomeScreen: React.FC = () => {
 
   if (accounts.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View style={[styles.emptyContainer, { backgroundColor: colors.background }]}>
         <Text style={styles.emptyIcon}>💰</Text>
-        <Text style={styles.emptyTitle}>暂无账户</Text>
-        <Text style={styles.emptySubtitle}>点击 + 添加 API 账户</Text>
+        <Text style={[styles.emptyTitle, { color: colors.text }]}>暂无账户</Text>
+        <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>点击 + 添加 API 账户</Text>
       </View>
     );
   }
 
   const quota = selectedAccount?.quotaInfo;
+  const percent = parseFloat(quota?.percent || '0');
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       refreshControl={
-        <RefreshControl refreshing={isLoading} onRefresh={refreshQuota} />
+        <RefreshControl 
+          refreshing={isLoading} 
+          onRefresh={refreshQuota}
+          tintColor={colors.primary}
+        />
       }
     >
       {/* 账户选择器 */}
       {accounts.length > 1 && (
-        <View style={styles.accountSelector}>
+        <View style={[styles.accountSelector, { backgroundColor: colors.card }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {accounts.map(account => (
               <TouchableOpacity
                 key={account.id}
                 style={[
                   styles.accountChip,
-                  selectedAccount?.id === account.id && styles.accountChipActive,
+                  selectedAccount?.id === account.id && { backgroundColor: colors.primary },
                 ]}
                 onPress={() => selectAccount(account)}
               >
@@ -88,34 +96,34 @@ export const HomeScreen: React.FC = () => {
       )}
 
       {/* 额度卡片 */}
-      <View style={styles.quotaCard}>
-        <Text style={styles.subscription}>
+      <View style={[styles.quotaCard, { backgroundColor: colors.card }]}>
+        <Text style={[styles.subscription, { color: colors.text }]}>
           {quota?.subscription || '未设置'}
         </Text>
         
-        <Text style={styles.daysRemaining}>
+        <Text style={[styles.daysRemaining, { color: colors.primary }]}>
           {quota?.daysRemaining || '0'} 天
         </Text>
-        <Text style={styles.daysLabel}>剩余时间</Text>
+        <Text style={[styles.daysLabel, { color: colors.textSecondary }]}>剩余时间</Text>
 
         {/* 环形进度条 */}
         <View style={styles.progressContainer}>
-          <View style={styles.progressCircle}>
-            <Text style={styles.progressPercent}>
+          <View style={[styles.progressCircle, { borderColor: colors.border }]}>
+            <Text style={[styles.progressPercent, { color: colors.text }]}>
               {quota?.percent || '0'}%
             </Text>
-            <Text style={styles.progressLabel}>已使用</Text>
+            <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>已使用</Text>
           </View>
         </View>
 
         {isLoading ? (
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={colors.primary} />
         ) : quota && !quota.error ? (
           <View style={styles.quotaDetails}>
-            <Text style={styles.quotaText}>
+            <Text style={[styles.quotaText, { color: colors.text }]}>
               剩余: ${quota.remaining}
             </Text>
-            <Text style={styles.quotaSubtext}>
+            <Text style={[styles.quotaSubtext, { color: colors.textSecondary }]}>
               总额: ${quota.limit}
             </Text>
           </View>
@@ -124,54 +132,56 @@ export const HomeScreen: React.FC = () => {
 
       {/* 错误提示 */}
       {quota?.error && (
-        <View style={styles.errorCard}>
-          <Text style={styles.errorTitle}>查询失败</Text>
-          <Text style={styles.errorText}>{quota.error}</Text>
+        <View style={[styles.errorCard, { backgroundColor: '#fff0f0' }]}>
+          <Text style={[styles.errorTitle, { color: colors.error }]}>查询失败</Text>
+          <Text style={[styles.errorText, { color: colors.error }]}>{quota.error}</Text>
         </View>
       )}
 
       {/* 详细信息 */}
       {quota && !quota.error && (
-        <View style={styles.detailCard}>
-          <Text style={styles.detailTitle}>详细信息</Text>
+        <View style={[styles.detailCard, { backgroundColor: colors.card }]}>
+          <Text style={[styles.detailTitle, { color: colors.text }]}>详细信息</Text>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>套餐名称</Text>
-            <Text style={styles.detailValue}>{quota.subscription}</Text>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>套餐名称</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>{quota.subscription}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>到期时间</Text>
-            <Text style={styles.detailValue}>{quota.endTime}</Text>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>到期时间</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>{quota.endTime}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>已用额度</Text>
-            <Text style={styles.detailValue}>${quota.used}</Text>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>已用额度</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>${quota.used}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>剩余额度</Text>
-            <Text style={styles.detailValue}>${quota.remaining}</Text>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>剩余额度</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>${quota.remaining}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>额度刷新时间</Text>
-            <Text style={styles.detailValue}>{quota.nextResetTime}</Text>
+            <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>额度刷新时间</Text>
+            <Text style={[styles.detailValue, { color: colors.text }]}>{quota.nextResetTime}</Text>
           </View>
         </View>
       )}
 
       {/* 账户列表 */}
-      <View style={styles.accountList}>
-        <Text style={styles.accountListTitle}>已添加的账户</Text>
+      <View style={[styles.accountList, { backgroundColor: colors.card }]}>
+        <Text style={[styles.accountListTitle, { color: colors.text }]}>已添加的账户</Text>
         {accounts.map(account => (
-          <View key={account.id} style={styles.accountItem}>
+          <View key={account.id} style={[styles.accountItem, { borderBottomColor: colors.border }]}>
             <View style={styles.accountInfo}>
-              <Text style={styles.accountName}>{account.name}</Text>
-              <Text style={styles.accountUrl}>{account.apiUrl}</Text>
+              <Text style={[styles.accountName, { color: colors.text }]}>{account.name}</Text>
+              <Text style={[styles.accountUrl, { color: colors.textSecondary }]}>{account.apiUrl}</Text>
             </View>
             <View style={styles.accountActions}>
               <TouchableOpacity
-                onPress={() => navigation.navigate('AddAccount', { editId: account.id })}
+                onPress={() => {
+                  // 导航到编辑页面
+                }}
                 style={styles.actionButton}
               >
-                <Text style={styles.actionText}>编辑</Text>
+                <Text style={[styles.actionText, { color: colors.primary }]}>编辑</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
@@ -184,9 +194,9 @@ export const HomeScreen: React.FC = () => {
                     ]
                   );
                 }}
-                style={[styles.actionButton, styles.deleteButton]}
+                style={[styles.actionButton]}
               >
-                <Text style={[styles.actionText, styles.deleteText]}>删除</Text>
+                <Text style={[styles.actionText, { color: colors.error }]}>删除</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -199,13 +209,11 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   emptyIcon: {
     fontSize: 64,
@@ -213,16 +221,13 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    color: '#666',
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#999',
   },
   accountSelector: {
     padding: 16,
-    backgroundColor: '#fff',
   },
   accountChip: {
     paddingHorizontal: 16,
@@ -230,9 +235,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#f0f0f0',
     marginRight: 8,
-  },
-  accountChipActive: {
-    backgroundColor: '#007AFF',
   },
   accountChipText: {
     color: '#666',
@@ -243,7 +245,6 @@ const styles = StyleSheet.create({
   quotaCard: {
     margin: 16,
     padding: 24,
-    backgroundColor: '#fff',
     borderRadius: 16,
     alignItems: 'center',
   },
@@ -255,11 +256,9 @@ const styles = StyleSheet.create({
   daysRemaining: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#007AFF',
   },
   daysLabel: {
     fontSize: 14,
-    color: '#999',
     marginBottom: 24,
   },
   progressContainer: {
@@ -271,7 +270,6 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 12,
-    borderColor: '#e0e0e0',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -281,7 +279,6 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 12,
-    color: '#999',
   },
   quotaDetails: {
     alignItems: 'center',
@@ -291,27 +288,21 @@ const styles = StyleSheet.create({
   },
   quotaSubtext: {
     fontSize: 14,
-    color: '#999',
   },
   errorCard: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#fff0f0',
     borderRadius: 12,
   },
   errorTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ff3b30',
     marginBottom: 8,
   },
-  errorText: {
-    color: '#ff3b30',
-  },
+  errorText: {},
   detailCard: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#fff',
     borderRadius: 12,
   },
   detailTitle: {
@@ -324,18 +315,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
   },
-  detailLabel: {
-    color: '#666',
-  },
+  detailLabel: {},
   detailValue: {
     fontWeight: '500',
   },
   accountList: {
     margin: 16,
     padding: 16,
-    backgroundColor: '#fff',
     borderRadius: 12,
   },
   accountListTitle: {
@@ -349,7 +336,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
   },
   accountInfo: {
     flex: 1,
@@ -360,7 +346,6 @@ const styles = StyleSheet.create({
   },
   accountUrl: {
     fontSize: 12,
-    color: '#999',
     marginTop: 2,
   },
   accountActions: {
@@ -371,11 +356,5 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     marginLeft: 8,
   },
-  actionText: {
-    color: '#007AFF',
-  },
-  deleteButton: {},
-  deleteText: {
-    color: '#ff3b30',
-  },
+  actionText: {},
 });
