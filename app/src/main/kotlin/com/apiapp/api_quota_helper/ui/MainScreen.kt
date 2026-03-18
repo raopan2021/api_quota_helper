@@ -31,12 +31,19 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
 
+    // 监听 editingAccount 变化，自动显示编辑对话框
+    LaunchedEffect(uiState.editingAccount) {
+        if (uiState.editingAccount != null) {
+            showAddDialog = true
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("API 额度助手") },
                 actions = {
-                    IconButton(onClick = { viewModel.refreshAllQuotas() }) {
+                    IconButton(onClick = { viewModel.refreshAllQuotas(force = true) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新")
                     }
                     IconButton(onClick = onNavigateToSettings) {
@@ -94,8 +101,14 @@ fun MainScreen(
     if (showAddDialog) {
         AddEditAccountDialog(
             editingAccount = uiState.editingAccount,
-            onDismiss = { showAddDialog = false },
-            onSave = { username, token -> viewModel.saveAccount(username, token); showAddDialog = false }
+            onDismiss = {
+                showAddDialog = false
+                viewModel.dismissDialog()
+            },
+            onSave = { username, token ->
+                viewModel.saveAccount(username, token)
+                showAddDialog = false
+            }
         )
     }
 }
@@ -229,33 +242,68 @@ fun AccountCard(
                         }
                     }
                     quota != null -> {
-                        // 额度信息
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(
-                                    "已用 ${String.format("%.1f", quota.amount_used)}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Text(
-                                    "额度 ${String.format("%.1f", quota.amount)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
+                        // 额度信息 - 左侧显示
+                        Column {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        "已用额度",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                    Text(
+                                        "${String.format("%.1f", quota.amount_used)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        "总额度",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                    Text(
+                                        "${String.format("%.1f", quota.amount)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        "剩余额度",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                    Text(
+                                        "${String.format("%.1f", quota.remaining)}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = statusColor
+                                    )
+                                }
                             }
-                            Column(horizontalAlignment = Alignment.End) {
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            // 剩余天数单独一行
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
                                 Text(
-                                    "剩余 ${String.format("%.1f", quota.remaining)}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = statusColor
-                                )
-                                Text(
-                                    "剩余 ${quota.days_remaining} 天",
+                                    "剩余天数: ",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                    "${quota.days_remaining} 天",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }

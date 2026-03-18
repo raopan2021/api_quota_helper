@@ -61,12 +61,13 @@ class MainViewModel(
         }
     }
 
-    fun refreshAllQuotas() {
+    fun refreshAllQuotas(force: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             val currentAccounts = _uiState.value.accounts
             val updated = currentAccounts.map { awq ->
-                if (awq.quota == null && awq.error == null) {
+                // force=true 时强制刷新所有账户，否则只刷新还没有数据的
+                if (force || (awq.quota == null && awq.error == null)) {
                     val result = quotaService.queryQuota(awq.account)
                     awq.copy(
                         quota = result.getOrNull(),
