@@ -9,7 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,7 +38,28 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(viewModel = viewModel)
+                    var currentScreen by remember { mutableStateOf("main") }
+                    
+                    when (currentScreen) {
+                        "main" -> {
+                            MainScreen(
+                                viewModel = viewModel,
+                                onNavigateToSettings = { currentScreen = "settings" }
+                            )
+                        }
+                        "settings" -> {
+                            SettingsScreen(
+                                settings = uiState.settings,
+                                onDarkModeChange = { viewModel.updateDarkMode(it) },
+                                onRefreshIntervalChange = { viewModel.updateRefreshInterval(it) },
+                                onBack = { currentScreen = "main" },
+                                onShowLogs = { currentScreen = "logs" }
+                            )
+                        }
+                        "logs" -> {
+                            LogScreen(onBack = { currentScreen = "settings" })
+                        }
+                    }
                 }
             }
         }

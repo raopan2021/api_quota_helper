@@ -1,5 +1,8 @@
 package com.apiapp.api_quota_helper.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
@@ -20,16 +23,18 @@ import com.apiapp.api_quota_helper.BuildConfig
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
 import com.apiapp.api_quota_helper.data.model.QuotaData
 import com.apiapp.api_quota_helper.data.model.UserAccount
+import com.apiapp.api_quota_helper.data.service.LogBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(
+    viewModel: MainViewModel,
+    onNavigateToSettings: () -> Unit
+) {
     val uiState by viewModel.uiState.collectAsState()
-    val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState()
-    var showSettings by remember { mutableStateOf(false) }
+    var showAddDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -39,14 +44,14 @@ fun MainScreen(viewModel: MainViewModel) {
                     IconButton(onClick = { viewModel.refreshAllQuotas() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "刷新全部")
                     }
-                    IconButton(onClick = { showSettings = true }) {
+                    IconButton(onClick = onNavigateToSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.showAddDialog() }) {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "添加账户")
             }
         }
@@ -86,26 +91,12 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
 
-        if (uiState.showAddDialog) {
+        if (showAddDialog) {
             AddEditAccountDialog(
                 editingAccount = uiState.editingAccount,
-                onDismiss = { viewModel.dismissDialog() },
-                onSave = { username, token -> viewModel.saveAccount(username, token) }
+                onDismiss = { showAddDialog = false },
+                onSave = { username, token -> viewModel.saveAccount(username, token); showAddDialog = false }
             )
-        }
-
-        if (showSettings) {
-            ModalBottomSheet(
-                onDismissRequest = { showSettings = false },
-                sheetState = sheetState
-            ) {
-                SettingsContent(
-                    settings = uiState.settings,
-                    onDarkModeChange = { viewModel.updateDarkMode(it) },
-                    onRefreshIntervalChange = { viewModel.updateRefreshInterval(it) },
-                    onDismiss = { showSettings = false }
-                )
-            }
         }
     }
 }
@@ -299,24 +290,12 @@ fun QuotaInfo(quota: QuotaData) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(
-                    text = "套餐: ${quota.plan_name}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = "状态: ${quota.status}",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(text = "套餐: ${quota.plan_name}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "状态: ${quota.status}", style = MaterialTheme.typography.bodySmall)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "剩余天数: ${quota.days_remaining}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = "重置: ${quota.next_reset_time}",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text(text = "剩余天数: ${quota.days_remaining}", style = MaterialTheme.typography.bodySmall)
+                Text(text = "重置: ${quota.next_reset_time}", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -368,248 +347,7 @@ fun AddEditAccountDialog(
     )
 }
 
-@Composable
-fun SettingsContent(
-    settings: com.apiapp.api_quota_helper.data.model.AppSettings,
-    onDarkModeChange: (Boolean) -> Unit,
-    onRefreshIntervalChange: (Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    var interval by remember { mutableFloatStateOf(settings.refreshIntervalMinutes.toFloat()) }
-    var showLogs by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp)
-            .padding(bottom = 32.dp)
-    ) {
-        Text(
-            text = "设置",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 主题设置
-        Text(
-            text = "主题",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    if (settings.darkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
-                    contentDescription = null
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("暗黑模式")
-            }
-            Switch(
-                checked = settings.darkMode,
-                onCheckedChange = onDarkModeChange
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 定时刷新设置
-        Text(
-            text = "定时刷新",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Text(
-            text = "刷新间隔",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Slider(
-                value = interval,
-                onValueChange = { interval = it },
-                onValueChangeFinished = { onRefreshIntervalChange(interval.toInt()) },
-                valueRange = 5f..120f,
-                steps = 22,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "${interval.toInt()} 分钟",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 日志查看
-        Text(
-            text = "调试",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Button(
-            onClick = { showLogs = true },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.Terminal, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("查看日志")
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 关于
-        Text(
-            text = "关于",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "API 额度助手",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "版本: ${BuildConfig.VERSION_NAME}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "作者: raopan",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    FilledTonalButton(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper"))
-                            context.startActivity(intent)
-                        }
-                    ) {
-                        Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("GitHub")
-                    }
-                    
-                    FilledTonalButton(
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases"))
-                            context.startActivity(intent)
-                        }
-                    ) {
-                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("下载")
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 桌面组件说明
-        Text(
-            text = "桌面组件",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Card(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "添加桌面组件方法：",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "1. 长按手机桌面\n2. 选择「小组件」\n3. 找到「API额度」并添加",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-        }
-    }
-
-    // 日志弹窗
-    if (showLogs) {
-        AlertDialog(
-            onDismissRequest = { showLogs = false },
-            title = { Text("网络日志") },
-            text = {
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "最近请求记录：",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        TextButton(onClick = { 
-                            com.apiapp.api_quota_helper.data.service.LogBuffer.clear()
-                            showLogs = false
-                        }) {
-                            Text("清除")
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 300.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
-                        Text(
-                            text = com.apiapp.api_quota_helper.data.service.LogBuffer.getAll(),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showLogs = false }) {
-                    Text("关闭")
-                }
-            }
-        )
-    }
-}
-
 fun formatTime(timestamp: Long): String {
     if (timestamp == 0L) return "从未"
-    val sdf = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp))
+    return SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
 }
