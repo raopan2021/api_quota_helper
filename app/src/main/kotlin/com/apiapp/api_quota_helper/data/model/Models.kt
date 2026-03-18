@@ -3,48 +3,42 @@ package com.apiapp.api_quota_helper.data.model
 import kotlinx.serialization.Serializable
 
 /**
- * API 账户类型
+ * 用户账户（用于额度查询）
  */
 @Serializable
-enum class AccountType(val displayName: String, val quotaUrl: String) {
-    OPENAI("OpenAI", "https://api.openai.com/v1/usage"),
-    CLAUDE("Claude", "https://api.anthropic.com/v1/messages"),
-    GOOGLE("Google AI", "https://generativelanguage.googleapis.com/v1beta2/models"),
-    MOONSHOT("Moonshot", "https://api.moonshot.cn/v1/usage"),
-    DEEPSEEK("DeepSeek", "https://api.deepseek.com/v1/usage"),
-    XAI("xAI", "https://api.x.ai/v1/usage");
-
-    companion object {
-        fun fromName(name: String): AccountType? = entries.find { it.name == name }
-    }
-}
-
-/**
- * API 账户
- */
-@Serializable
-data class Account(
+data class UserAccount(
     val id: String,
-    val type: AccountType,
-    val name: String,
-    val apiKey: String,
+    val username: String,
+    val token: String,
     val createdAt: Long = System.currentTimeMillis()
 )
 
 /**
- * 额度信息
+ * 额度查询结果
  */
 @Serializable
-data class QuotaInfo(
-    val accountId: String,
-    val type: AccountType,
-    val used: Long,
-    val limit: Long,
-    val unit: String = "tokens",
-    val lastUpdated: Long = System.currentTimeMillis()
+data class QuotaResponse(
+    val success: Boolean,
+    val data: QuotaData? = null,
+    val message: String? = null
+)
+
+@Serializable
+data class QuotaData(
+    val subscription_id: Int = 0,
+    val plan_name: String = "",
+    val days_remaining: Int = 0,
+    val end_time: String = "",
+    val amount: Double = 0.0,
+    val amount_used: Double = 0.0,
+    val next_reset_time: String = "",
+    val status: String = ""
 ) {
-    val percentage: Float
-        get() = if (limit > 0) (used.toFloat() / limit.toFloat()) else 0f
+    val remaining: Double
+        get() = amount - amount_used
+    
+    val usedPercentage: Float
+        get() = if (amount > 0) (amount_used / amount).toFloat() else 0f
 }
 
 /**
@@ -52,7 +46,17 @@ data class QuotaInfo(
  */
 @Serializable
 data class AccountWithQuota(
-    val account: Account,
-    val quota: QuotaInfo? = null,
-    val error: String? = null
+    val account: UserAccount,
+    val quota: QuotaData? = null,
+    val error: String? = null,
+    val lastUpdated: Long = 0L
+)
+
+/**
+ * 应用设置
+ */
+@Serializable
+data class AppSettings(
+    val darkMode: Boolean = false,
+    val refreshIntervalMinutes: Int = 30
 )

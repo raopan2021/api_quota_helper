@@ -11,8 +11,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.apiapp.api_quota_helper.data.model.AccountType
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
+import com.apiapp.api_quota_helper.data.model.QuotaData
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,7 +27,10 @@ fun MainScreen(viewModel: MainViewModel) {
                 title = { Text("API 额度助手") },
                 actions = {
                     IconButton(onClick = { viewModel.refreshAllQuotas() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                        Icon(Icons.Default.Refresh, contentDescription = "刷新全部")
+                    }
+                    IconButton(onClick = { viewModel.showSettings() }) {
+                        Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
                 }
             )
@@ -77,7 +80,16 @@ fun MainScreen(viewModel: MainViewModel) {
             AddEditAccountDialog(
                 editingAccount = uiState.editingAccount,
                 onDismiss = { viewModel.dismissDialog() },
-                onSave = { type, name, key -> viewModel.saveAccount(type, name, key) }
+                onSave = { username, token -> viewModel.saveAccount(username, token) }
+            )
+        }
+
+        if (uiState.showSettings) {
+            SettingsDialog(
+                settings = uiState.settings,
+                onDismiss = { viewModel.dismissSettings() },
+                onDarkModeChange = { viewModel.updateDarkMode(it) },
+                onRefreshIntervalChange = { viewModel.updateRefreshInterval(it) }
             )
         }
     }
@@ -103,7 +115,7 @@ fun EmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            "点击 + 按钮添加 API 账户",
+            "点击 + 按钮添加账户",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
         )
@@ -132,22 +144,24 @@ fun AccountCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = getAccountIcon(accountWithQuota.account.type),
+                        imageVector = Icons.Default.AccountCircle,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = accountWithQuota.account.name,
+                            text = accountWithQuota.account.username,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            text = accountWithQuota.account.type.displayName,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
+                        if (accountWithQuota.quota != null) {
+                            Text(
+                                text = accountWithQuota.quota.plan_name,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
                     }
                 }
 
@@ -198,30 +212,10 @@ fun AccountCard(
                     }
                 }
                 accountWithQuota.quota != null -> {
-                    val quota = accountWithQuota.quota
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "已使用: ${formatNumber(quota.used)} ${quota.unit}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        if (quota.limit > 0) {
-                            Text(
-                                text = "限额: ${formatNumber(quota.limit)} ${quota.unit}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LinearProgressIndicator(
-                        progress = { quota.percentage.coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    QuotaInfo(quota = accountWithQuota.quota)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "更新于: ${formatTime(quota.lastUpdated)}",
+                        text = "更新于: ${formatTime(accountWithQuota.lastUpdated)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
@@ -238,68 +232,83 @@ fun AccountCard(
     }
 }
 
+@Composable
+fun QuotaInfo(quota: QuotaData) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "已用: ${String.format("%.2f", quota.amount_used)} / ${String.format("%.2f", quota.amount)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = "剩余: ${String.format("%.2f", quota.remaining)}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        LinearProgressIndicator(
+            progress = { quota.usedPercentage.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "套餐: ${quota.plan_name}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = "状态: ${quota.status}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "剩余天数: ${quota.days_remaining}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                Text(
+                    text = "重置: ${quota.next_reset_time}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditAccountDialog(
-    editingAccount: com.apiapp.api_quota_helper.data.model.Account?,
+    editingAccount: com.apiapp.api_quota_helper.data.model.UserAccount?,
     onDismiss: () -> Unit,
-    onSave: (AccountType, String, String) -> Unit
+    onSave: (String, String) -> Unit
 ) {
-    var selectedType by remember { mutableStateOf(editingAccount?.type ?: AccountType.OPENAI) }
-    var name by remember { mutableStateOf(editingAccount?.name ?: "") }
-    var apiKey by remember { mutableStateOf(editingAccount?.apiKey ?: "") }
-    var typeExpanded by remember { mutableStateOf(false) }
+    var username by remember { mutableStateOf(editingAccount?.username ?: "") }
+    var token by remember { mutableStateOf(editingAccount?.token ?: "") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (editingAccount != null) "编辑账户" else "添加账户") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // 账户类型
-                ExposedDropdownMenuBox(
-                    expanded = typeExpanded,
-                    onExpandedChange = { typeExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = selectedType.displayName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("类型") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = typeExpanded,
-                        onDismissRequest = { typeExpanded = false }
-                    ) {
-                        AccountType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type.displayName) },
-                                onClick = {
-                                    selectedType = type
-                                    typeExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-
-                // 账户名称
                 OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("名称") },
-                    placeholder = { Text("例如: 我的 OpenAI") },
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("用户名") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-
-                // API Key
                 OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
-                    label = { Text("API Key") },
-                    placeholder = { Text("sk-...") },
+                    value = token,
+                    onValueChange = { token = it },
+                    label = { Text("Token (API Key)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -307,8 +316,8 @@ fun AddEditAccountDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(selectedType, name, apiKey) },
-                enabled = name.isNotBlank() && apiKey.isNotBlank()
+                onClick = { onSave(username, token) },
+                enabled = username.isNotBlank() && token.isNotBlank()
             ) {
                 Text("保存")
             }
@@ -321,25 +330,107 @@ fun AddEditAccountDialog(
     )
 }
 
-fun getAccountIcon(type: AccountType) = when (type) {
-    AccountType.OPENAI -> Icons.Default.Psychology
-    AccountType.CLAUDE -> Icons.Default.Psychology
-    AccountType.GOOGLE -> Icons.Default.Cloud
-    AccountType.MOONSHOT -> Icons.Default.Rocket
-    AccountType.DEEPSEEK -> Icons.Default.Star
-    AccountType.XAI -> Icons.Default.Star
-}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsDialog(
+    settings: com.apiapp.api_quota_helper.data.model.AppSettings,
+    onDismiss: () -> Unit,
+    onDarkModeChange: (Boolean) -> Unit,
+    onRefreshIntervalChange: (Int) -> Unit
+) {
+    var interval by remember { mutableStateOf(settings.refreshIntervalMinutes.toFloat()) }
 
-fun formatNumber(num: Long): String {
-    return when {
-        num >= 1_000_000_000 -> String.format("%.2fB", num / 1_000_000_000.0)
-        num >= 1_000_000 -> String.format("%.2fM", num / 1_000_000.0)
-        num >= 1_000 -> String.format("%.2fK", num / 1_000.0)
-        else -> num.toString()
-    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("设置") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // 暗黑模式
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.DarkMode, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("暗黑模式")
+                    }
+                    Switch(
+                        checked = settings.darkMode,
+                        onCheckedChange = onDarkModeChange
+                    )
+                }
+
+                HorizontalDivider()
+
+                // 刷新间隔
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Timer, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("自动刷新间隔")
+                        }
+                        Text("${interval.toInt()} 分钟")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Slider(
+                        value = interval,
+                        onValueChange = { interval = it },
+                        onValueChangeFinished = { onRefreshIntervalChange(interval.toInt()) },
+                        valueRange = 5f..120f,
+                        steps = 22
+                    )
+                }
+
+                HorizontalDivider()
+
+                // 关于
+                Column {
+                    Text(
+                        text = "关于",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "API 额度助手",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = "版本: 1.0.0",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "作者: raopan",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    Text(
+                        text = "GitHub: github.com/raopan2021/api_quota_helper",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
 }
 
 fun formatTime(timestamp: Long): String {
+    if (timestamp == 0L) return "从未"
     val sdf = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
