@@ -253,7 +253,7 @@ fun AccountCard(
                                     color = statusColor
                                 )
                                 Text(
-                                    "剩余${quota.days_remaining}天",
+                                    "剩余 ${quota.days_remaining} 天",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                 )
@@ -416,11 +416,18 @@ fun ResetCountdown(resetTime: String) {
     }
 
     if (countdown.isNotEmpty()) {
-        Text(
-            "距重置: $countdown",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary
-        )
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                "下次重置: $countdown",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                "(${resetTime})",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
     }
 }
 
