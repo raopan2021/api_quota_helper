@@ -52,6 +52,8 @@ android {
         }
         debug {
             isDebuggable = true
+            isMinifyEnabled = true
+            isShrinkResources = true
             applicationIdSuffix = ".debug"
         }
     }

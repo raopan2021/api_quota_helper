@@ -65,18 +65,21 @@ class MainViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             val currentAccounts = _uiState.value.accounts
-            val updated = currentAccounts.map { awq ->
-                // force=true 时强制刷新所有账户，否则只刷新还没有数据的
-                if (force || (awq.quota == null && awq.error == null)) {
-                    val result = quotaService.queryQuota(awq.account)
-                    awq.copy(
-                        quota = result.getOrNull(),
-                        error = result.exceptionOrNull()?.message,
-                        lastUpdated = System.currentTimeMillis()
-                    )
-                } else {
-                    awq
-                }
+            // force=true 时先清空数据，显示加载状态
+            val cleared = if (force) {
+                currentAccounts.map { it.copy(quota = null, error = null) }
+            } else {
+                currentAccounts
+            }
+            _uiState.update { it.copy(accounts = cleared) }
+            
+            val updated = cleared.map { awq ->
+                val result = quotaService.queryQuota(awq.account)
+                awq.copy(
+                    quota = result.getOrNull(),
+                    error = result.exceptionOrNull()?.message,
+                    lastUpdated = System.currentTimeMillis()
+                )
             }
             _uiState.update { it.copy(accounts = updated, isRefreshing = false) }
         }
