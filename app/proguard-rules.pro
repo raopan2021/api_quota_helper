@@ -19,26 +19,26 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
-# Ktor
--keep class io.ktor.** { *; }
--dontwarn io.ktor.**
--dontwarn kotlinx.coroutines.**
-
-# OkHttp
--dontwarn okhttp3.**
--dontwarn okio.**
--dontwarn org.conscrypt.**
--keep class okhttp3.** { *; }
--keep interface okhttp3.** { *; }
-
-# SLF4J (from Ktor)
--dontwarn org.slf4j.**
--keep class org.slf4j.** { *; }
+# 数据模型
+-keep class com.apiapp.api_quota_helper.data.model.** { *; }
 
 # AndroidX
--keep class androidx.** { *; }
 -dontwarn androidx.**
+-keep class androidx.** { *; }
 
 # Compose
--dontwarn androidx.compose.**
--keep class androidx.compose.** { *; }
+-allowaccessmodification
+-repackageclasses
+
+# 移除日志
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+    public static *** w(...);
+    public static *** e(...);
+}
+
+# 移除调试信息
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
