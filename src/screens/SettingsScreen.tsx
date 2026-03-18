@@ -1,3 +1,9 @@
+/**
+ * 设置屏幕
+ * 用于配置应用设置和显示应用信息
+ * 作者: raopan2021
+ */
+
 import React, { useState } from 'react';
 import {
   View,
@@ -12,18 +18,29 @@ import {
 import { useApp } from '../context/AppContext';
 import { getThemeColors } from '../theme';
 
+// 可选的刷新间隔列表（分钟）
 const REFRESH_INTERVALS = [1, 3, 5, 10, 15, 30, 60];
 
+/**
+ * 设置屏幕组件
+ * 提供应用设置和关于信息
+ */
 export const SettingsScreen: React.FC = () => {
+  // 从上下文获取状态和方法
   const { darkMode, refreshInterval, setDarkMode, setRefreshInterval } = useApp();
+  
+  // 控制刷新间隔选择器的显示
   const [showIntervalPicker, setShowIntervalPicker] = useState(false);
   const colors = getThemeColors(darkMode);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* 主题设置 */}
+      
+      {/* 主题设置区域 */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>外观</Text>
+        
+        {/* 暗黑模式开关 */}
         <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
           <View style={styles.settingInfo}>
             <Text style={[styles.settingLabel, { color: colors.text }]}>暗黑模式</Text>
@@ -37,9 +54,11 @@ export const SettingsScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* 定时刷新设置 */}
+      {/* 定时刷新设置区域 */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>定时刷新</Text>
+        
+        {/* 自动刷新间隔选择 */}
         <TouchableOpacity
           style={[styles.settingItem, { borderBottomColor: colors.border }]}
           onPress={() => setShowIntervalPicker(true)}
@@ -50,6 +69,8 @@ export const SettingsScreen: React.FC = () => {
           </View>
           <Text style={[styles.chevron, { color: colors.textSecondary }]}>›</Text>
         </TouchableOpacity>
+        
+        {/* 刷新说明 */}
         <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
           <View style={styles.settingInfo}>
             <Text style={[styles.settingLabel, { color: colors.text }]}>说明</Text>
@@ -58,28 +79,32 @@ export const SettingsScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* 关于 */}
+      {/* 关于区域 */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>关于</Text>
+        
         <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
           <Text style={[styles.settingLabel, { color: colors.text }]}>软件作者</Text>
           <Text style={[styles.settingValue, { color: colors.textSecondary }]}>raopan2021</Text>
         </View>
+        
         <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
           <Text style={[styles.settingLabel, { color: colors.text }]}>GitHub</Text>
           <Text style={[styles.settingValue, { color: colors.textSecondary }]}>raopan2021</Text>
         </View>
+        
         <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
           <Text style={[styles.settingLabel, { color: colors.text }]}>版本</Text>
           <Text style={[styles.settingValue, { color: colors.textSecondary }]}>1.0.0</Text>
         </View>
+        
         <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
           <Text style={[styles.settingLabel, { color: colors.text }]}>ICP备案</Text>
           <Text style={[styles.settingValue, { color: colors.textSecondary }]}>京ICP备12345678号</Text>
         </View>
       </View>
 
-      {/* 使用说明 */}
+      {/* 使用说明区域 */}
       <View style={[styles.section, { backgroundColor: colors.card }]}>
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>使用说明</Text>
         <View style={styles.helpItem}>
@@ -89,7 +114,7 @@ export const SettingsScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* 刷新间隔选择器 */}
+      {/* 刷新间隔选择器 - 模态框 */}
       <Modal
         visible={showIntervalPicker}
         transparent
@@ -99,6 +124,8 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>选择刷新间隔</Text>
+            
+            {/* 间隔选项列表 */}
             {REFRESH_INTERVALS.map(interval => (
               <TouchableOpacity
                 key={interval}
@@ -123,6 +150,8 @@ export const SettingsScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             ))}
+            
+            {/* 取消按钮 */}
             <TouchableOpacity
               style={[styles.cancelButton, { backgroundColor: colors.background }]}
               onPress={() => setShowIntervalPicker(false)}
@@ -132,14 +161,17 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+      
     </ScrollView>
   );
 };
 
+// 样式定义
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // 设置区域样式
   section: {
     marginTop: 16,
     paddingHorizontal: 16,
@@ -149,6 +181,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingVertical: 12,
   },
+  // 设置项样式
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -173,6 +206,7 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 24,
   },
+  // 帮助信息样式
   helpItem: {
     paddingVertical: 12,
   },
@@ -180,6 +214,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 24,
   },
+  // 模态框样式
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

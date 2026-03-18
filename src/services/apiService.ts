@@ -1,18 +1,34 @@
+/**
+ * API 服务模块
+ * 用于与 API 服务端通信，查询账户额度信息
+ * 作者: raopan2021
+ */
+
 import axios from 'axios';
 import { Account, QuotaInfo } from '../models/account';
 
+// 默认 API 地址
 const DEFAULT_API_URL = 'http://v2api.aicodee.com/chaxun';
 
-// API 服务 - 用于查询账户额度
+/**
+ * API 服务 - 用于查询账户额度
+ * 提供查询 API 配额信息的功能
+ */
 export const apiService = {
-  // 查询 API 额度
+  /**
+   * 查询 API 额度
+   * @param account - 账户信息
+   * @returns 额度信息对象
+   */
   async fetchQuota(account: Account): Promise<QuotaInfo> {
     try {
+      // 获取 API 地址，默认使用配置地址
       const baseUrl = account.apiUrl || DEFAULT_API_URL;
       
       console.log('API Request:', `${baseUrl}/query`);
       console.log('Username:', account.name);
       
+      // 发送 POST 请求查询额度
       const response = await axios.post(
         `${baseUrl}/query`,
         {
@@ -21,7 +37,7 @@ export const apiService = {
         },
         {
           headers: { 'Content-Type': 'application/json' },
-          timeout: 30000,
+          timeout: 30000,  // 30秒超时
         }
       );
       
@@ -46,6 +62,7 @@ export const apiService = {
           nextResetTime: d.next_reset_time || '-',
         };
       } else {
+        // API 返回失败
         return {
           subscription: '',
           daysRemaining: '0',
@@ -61,6 +78,7 @@ export const apiService = {
     } catch (error: any) {
       console.error('API Error:', error.message);
       
+      // 解析错误信息
       let errorMsg = '未知错误';
       if (error.code === 'ECONNABORTED') {
         errorMsg = '请求超时，请检查网络';
