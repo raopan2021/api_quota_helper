@@ -73,7 +73,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const ListTile(
             leading: Icon(Icons.info),
             title: Text('软件作者'),
-            subtitle: Text('API Quota Helper'),
+            subtitle: Text('raopan2021'),
           ),
           const ListTile(
             leading: Icon(Icons.code),
@@ -83,7 +83,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const ListTile(
             leading: Icon(Icons.history),
             title: Text('版本'),
-            subtitle: Text('1.0.0'),
+            subtitle: Text('1.0.2'),
           ),
           const Divider(),
           
