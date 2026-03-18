@@ -231,11 +231,16 @@ fun LogScreen(onBack: () -> Unit) {
                     IconButton(onClick = { showDeleteAllConfirm = true }) {
                         Icon(Icons.Default.DeleteSweep, contentDescription = "清空全部")
                     }
-                    IconButton(onClick = { refreshKey++ }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                    }
                 }
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { refreshKey++ },
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
