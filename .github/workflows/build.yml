@@ -55,6 +55,10 @@ jobs:
       run: |
         sed -i 's/enableBundleCompression =/\/\/ enableBundleCompression =/' android/app/build.gradle
     
+    - name: Bundle JS for Release
+      run: |
+        npx expo export:embed --platform android --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --dev false
+    
     - name: Configure Gradle Kotlin version
       run: |
         # 修复 expo-modules-core Kotlin 编译问题
