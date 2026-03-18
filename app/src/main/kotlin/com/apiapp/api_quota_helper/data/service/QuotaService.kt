@@ -2,6 +2,7 @@ package com.apiapp.api_quota_helper.data.service
 
 import com.apiapp.api_quota_helper.data.model.QuotaData
 import com.apiapp.api_quota_helper.data.model.UserAccount
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -10,14 +11,18 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 import java.util.UUID
 
 class QuotaService() {
 
+    private val TAG = "QuotaService"
+
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> = withContext(Dispatchers.IO) {
         try {
             val url = URL("http://v2api.aicodee.com/chaxun/query")
+            Log.d(TAG, "请求URL: http://v2api.aicodee.com/chaxun/query")
+            Log.d(TAG, "请求参数: username=${account.username}, token=${account.token}")
+            
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
             connection.doOutput = true
@@ -32,6 +37,8 @@ class QuotaService() {
                 put("username", account.username)
                 put("token", account.token)
             }.toString()
+            
+            Log.d(TAG, "请求体: $jsonBody")
 
             OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
                 writer.write(jsonBody)
@@ -40,6 +47,8 @@ class QuotaService() {
 
             // 读取响应
             val responseCode = connection.responseCode
+            Log.d(TAG, "响应码: $responseCode")
+            
             val reader = BufferedReader(InputStreamReader(
                 if (responseCode == HttpURLConnection.HTTP_OK) 
                     connection.inputStream 
@@ -55,11 +64,13 @@ class QuotaService() {
             }
             reader.close()
 
+            val body = response.toString()
+            Log.d(TAG, "响应体: $body")
+
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext Result.failure(Exception("请求失败: HTTP $responseCode"))
+                return@withContext Result.failure(Exception("请求失败: HTTP $responseCode, 响应: $body"))
             }
 
-            val body = response.toString()
             if (body.isEmpty()) {
                 return@withContext Result.failure(Exception("空响应"))
             }
@@ -86,8 +97,10 @@ class QuotaService() {
                 status = data.optString("status", "")
             )
 
+            Log.d(TAG, "解析成功: $quotaData")
             Result.success(quotaData)
         } catch (e: Exception) {
+            Log.e(TAG, "请求异常: ${e.message}", e)
             Result.failure(e)
         }
     }
