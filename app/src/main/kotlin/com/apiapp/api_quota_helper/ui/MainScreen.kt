@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -375,6 +377,7 @@ fun SettingsContent(
 ) {
     val context = LocalContext.current
     var interval by remember { mutableFloatStateOf(settings.refreshIntervalMinutes.toFloat()) }
+    var showLogs by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -452,6 +455,25 @@ fun SettingsContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // 日志查看
+        Text(
+            text = "调试",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Button(
+            onClick = { showLogs = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.Terminal, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("查看日志")
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         // 关于
         Text(
             text = "关于",
@@ -486,7 +508,6 @@ fun SettingsContent(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // GitHub 按钮
                     FilledTonalButton(
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper"))
@@ -498,7 +519,6 @@ fun SettingsContent(
                         Text("GitHub")
                     }
                     
-                    // 浏览器按钮
                     FilledTonalButton(
                         onClick = {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases"))
@@ -541,6 +561,50 @@ fun SettingsContent(
                 )
             }
         }
+    }
+
+    // 日志弹窗
+    if (showLogs) {
+        AlertDialog(
+            onDismissRequest = { showLogs = false },
+            title = { Text("网络日志") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "最近请求记录：",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        TextButton(onClick = { 
+                            com.apiapp.api_quota_helper.data.service.LogBuffer.clear()
+                            showLogs = false
+                        }) {
+                            Text("清除")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(
+                            text = com.apiapp.api_quota_helper.data.service.LogBuffer.getAll(),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLogs = false }) {
+                    Text("关闭")
+                }
+            }
+        )
     }
 }
 
