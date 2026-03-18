@@ -22,6 +22,7 @@ import com.apiapp.api_quota_helper.data.model.AccountWithQuota
 import com.apiapp.api_quota_helper.data.model.QuotaData
 import com.apiapp.api_quota_helper.data.model.UserAccount
 import com.apiapp.api_quota_helper.data.service.LogBuffer
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -173,7 +174,10 @@ fun AccountCard(
                 accountWithQuota.quota != null -> {
                     QuotaInfo(quota = accountWithQuota.quota)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("更新于: ${formatTime(accountWithQuota.lastUpdated)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("更新于: ${formatRelativeTime(accountWithQuota.lastUpdated)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                        ResetCountdown(resetTime = accountWithQuota.quota.next_reset_time)
+                    }
                 }
                 else -> {
                     Text("正在加载...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
@@ -242,4 +246,57 @@ fun AddEditAccountDialog(
 fun formatTime(timestamp: Long): String {
     if (timestamp == 0L) return "从未"
     return SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()).format(Date(timestamp))
+}
+
+fun formatRelativeTime(timestamp: Long): String {
+    if (timestamp == 0L) return "从未"
+    val diff = System.currentTimeMillis() - timestamp
+    val seconds = diff / 1000
+    val minutes = seconds / 60
+    val hours = minutes / 60
+    val days = hours / 24
+    
+    return when {
+        days > 0 -> "${days}天前"
+        hours > 0 -> "${hours}小时前"
+        minutes > 0 -> "${minutes}分钟前"
+        seconds > 0 -> "${seconds}秒前"
+        else -> "刚刚"
+    }
+}
+
+@Composable
+fun ResetCountdown(resetTime: String) {
+    var countdown by remember { mutableStateOf("") }
+    
+    LaunchedEffect(resetTime) {
+        while (true) {
+            countdown = calculateCountdown(resetTime)
+            delay(1000)
+        }
+    }
+    
+    if (countdown.isNotEmpty()) {
+        Text("距重置: $countdown", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+private fun calculateCountdown(resetTime: String): String {
+    if (resetTime.isEmpty()) return ""
+    return try {
+        val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.getDefault())
+        val resetDate = sdf.parse(resetTime) ?: return ""
+        val now = System.currentTimeMillis()
+        val diff = resetDate.time - now
+        
+        if (diff <= 0) return "已重置"
+        
+        val hours = diff / (1000 * 60 * 60)
+        val minutes = (diff % (1000 * 60 * 60)) / (1000 * 60)
+        val seconds = (diff % (1000 * 60)) / 1000
+        
+        "${hours}小时${minutes}分${seconds}秒"
+    } catch (e: Exception) {
+        ""
+    }
 }
