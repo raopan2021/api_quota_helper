@@ -260,7 +260,7 @@ fun LogScreen(onBack: () -> Unit) {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(logs, key = { it.id }) { entry ->
+                    items(logs) { entry ->
                         LogEntryCard(
                             entry = entry,
                             onCopy = {
