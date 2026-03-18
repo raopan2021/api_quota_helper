@@ -197,11 +197,18 @@ fun AccountCard(
                                 fontWeight = FontWeight.Bold
                             )
                             if (quota != null) {
-                                Text(
-                                    quota.plan_name,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
+                                Row {
+                                    Text(
+                                        quota.plan_name,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                    Text(
+                                        " · 剩余 ${quota.days_remaining} 天",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         }
                     }
@@ -309,26 +316,6 @@ fun AccountCard(
                                         color = statusColor
                                     )
                                 }
-                            }
-                            
-                            Spacer(modifier = Modifier.height(4.dp))
-                            
-                            // 剩余天数单独一行
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                Text(
-                                    "剩余天数: ",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                )
-                                Text(
-                                    "${quota.days_remaining} 天",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
                             }
                         }
                         
