@@ -17,7 +17,7 @@ class QuotaService() {
 
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> = withContext(Dispatchers.IO) {
         try {
-            val url = URL("https://v2api.aicodee.com/chaxun/query")
+            val url = URL("http://v2api.aicodee.com/chaxun/query")
             val connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "POST"
             connection.doOutput = true
