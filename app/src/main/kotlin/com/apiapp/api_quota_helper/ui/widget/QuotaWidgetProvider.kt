@@ -3,13 +3,11 @@ package com.apiapp.api_quota_helper.ui.widget
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
-import android.content.Intent
 import android.widget.RemoteViews
 import android.app.PendingIntent
+import android.content.Intent
 import com.apiapp.api_quota_helper.R
-import com.apiapp.api_quota_helper.data.model.QuotaData
-import com.apiapp.api_quota_helper.data.model.UserAccount
-import com.apiapp.api_quota_helper.data.repository.AccountRepository
+import com.apiapp.api_quota_helper.ui.MainActivity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.text.SimpleDateFormat
@@ -44,7 +42,7 @@ class QuotaWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(context.packageName, R.layout.widget_quota)
 
             // 创建点击事件，打开应用
-            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val intent = Intent(context, MainActivity::class.java)
             val pendingIntent = PendingIntent.getActivity(
                 context,
                 0,
@@ -56,7 +54,7 @@ class QuotaWidgetProvider : AppWidgetProvider() {
             // 从 DataStore 获取数据
             runBlocking {
                 try {
-                    val repository = AccountRepository(context)
+                    val repository = com.apiapp.api_quota_helper.data.repository.AccountRepository(context)
                     val accounts = repository.accounts.first()
                     
                     if (accounts.isNotEmpty()) {
@@ -64,23 +62,25 @@ class QuotaWidgetProvider : AppWidgetProvider() {
                         views.setTextViewText(R.id.widget_account, "账户: ${account.username}")
                         
                         // 显示最后更新时间
-                        val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                        val sdf = SimpleDateFormat("MM-dd HH:mm", Locale.getDefault())
                         views.setTextViewText(R.id.widget_update_time, "更新: ${sdf.format(Date())}")
                         
-                        // TODO: 从本地缓存获取额度信息
-                        // 完整刷新需要调用 API，这里显示上次缓存的数据
+                        // 额度信息需要在主应用刷新后查看
                         views.setTextViewText(R.id.widget_quota, "已用: - / -")
                         views.setTextViewText(R.id.widget_remaining, "剩余: -")
+                        views.setTextViewText(R.id.widget_plan, "套餐: 请打开应用刷新")
                     } else {
                         views.setTextViewText(R.id.widget_account, "账户: 未配置")
                         views.setTextViewText(R.id.widget_quota, "已用: -")
                         views.setTextViewText(R.id.widget_remaining, "剩余: -")
+                        views.setTextViewText(R.id.widget_plan, "套餐: -")
                         views.setTextViewText(R.id.widget_update_time, "更新: 从未")
                     }
                 } catch (e: Exception) {
                     views.setTextViewText(R.id.widget_account, "账户: 加载失败")
                     views.setTextViewText(R.id.widget_quota, "已用: -")
                     views.setTextViewText(R.id.widget_remaining, "剩余: -")
+                    views.setTextViewText(R.id.widget_plan, "套餐: -")
                     views.setTextViewText(R.id.widget_update_time, "更新: 错误")
                 }
             }

@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
 import com.apiapp.api_quota_helper.data.model.QuotaData
+import com.apiapp.api_quota_helper.data.model.UserAccount
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -85,7 +86,7 @@ fun MainScreen(viewModel: MainViewModel) {
         }
 
         if (uiState.showSettings) {
-            SettingsDialog(
+            SettingsPage(
                 settings = uiState.settings,
                 onDismiss = { viewModel.dismissSettings() },
                 onDarkModeChange = { viewModel.updateDarkMode(it) },
@@ -131,6 +132,7 @@ fun AccountCard(
     onRefresh: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -185,7 +187,7 @@ fun AccountCard(
                         )
                         DropdownMenuItem(
                             text = { Text("删除") },
-                            onClick = { onDelete(); showMenu = false },
+                            onClick = { showDeleteConfirm = true; showMenu = false },
                             leadingIcon = { Icon(Icons.Default.Delete, null) }
                         )
                     }
@@ -229,6 +231,30 @@ fun AccountCard(
                 }
             }
         }
+    }
+
+    // 删除确认弹窗
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("确认删除") },
+            text = { Text("确定要删除账户 ${accountWithQuota.account.username} 吗？") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete()
+                        showDeleteConfirm = false
+                    }
+                ) {
+                    Text("删除", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
@@ -283,10 +309,9 @@ fun QuotaInfo(quota: QuotaData) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddEditAccountDialog(
-    editingAccount: com.apiapp.api_quota_helper.data.model.UserAccount?,
+    editingAccount: UserAccount?,
     onDismiss: () -> Unit,
     onSave: (String, String) -> Unit
 ) {
@@ -332,101 +357,162 @@ fun AddEditAccountDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsDialog(
+fun SettingsPage(
     settings: com.apiapp.api_quota_helper.data.model.AppSettings,
     onDismiss: () -> Unit,
     onDarkModeChange: (Boolean) -> Unit,
     onRefreshIntervalChange: (Int) -> Unit
 ) {
-    var interval by remember { mutableStateOf(settings.refreshIntervalMinutes.toFloat()) }
+    var interval by remember { mutableFloatStateOf(settings.refreshIntervalMinutes.toFloat()) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("设置") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                // 暗黑模式
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("设置") },
+                navigationIcon = {
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                    }
+                }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+            // 外观设置
+            Text(
+                text = "外观",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (settings.darkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
+                        contentDescription = null
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("暗黑模式")
+                }
+                Switch(
+                    checked = settings.darkMode,
+                    onCheckedChange = onDarkModeChange
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 自动刷新设置
+            Text(
+                text = "自动刷新",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "自动刷新间隔",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Slider(
+                    value = interval,
+                    onValueChange = { interval = it },
+                    onValueChangeFinished = { onRefreshIntervalChange(interval.toInt()) },
+                    valueRange = 5f..120f,
+                    steps = 22,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "${interval.toInt()} 分钟",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 关于
+            Text(
+                text = "关于",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.DarkMode, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("暗黑模式")
-                    }
-                    Switch(
-                        checked = settings.darkMode,
-                        onCheckedChange = onDarkModeChange
-                    )
-                }
-
-                HorizontalDivider()
-
-                // 刷新间隔
-                Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Timer, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("自动刷新间隔")
-                        }
-                        Text("${interval.toInt()} 分钟")
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Slider(
-                        value = interval,
-                        onValueChange = { interval = it },
-                        onValueChangeFinished = { onRefreshIntervalChange(interval.toInt()) },
-                        valueRange = 5f..120f,
-                        steps = 22
-                    )
-                }
-
-                HorizontalDivider()
-
-                // 关于
-                Column {
-                    Text(
-                        text = "关于",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "API 额度助手",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "版本: 1.0.0",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        text = "版本: 1.0.1",
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "作者: raopan",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        style = MaterialTheme.typography.bodyMedium
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "GitHub: github.com/raopan2021/api_quota_helper",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("关闭")
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // 桌面组件说明
+            Text(
+                text = "桌面组件",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "添加桌面组件方法：",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "1. 长按手机桌面\n2. 选择「小组件」\n3. 找到「API额度」并添加",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
-    )
+    }
 }
 
 fun formatTime(timestamp: Long): String {
