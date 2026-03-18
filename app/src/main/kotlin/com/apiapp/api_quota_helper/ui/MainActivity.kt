@@ -1,0 +1,46 @@
+package com.apiapp.api_quota_helper.ui
+
+import android.app.Application
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.apiapp.api_quota_helper.data.repository.AccountRepository
+import com.apiapp.api_quota_helper.data.service.QuotaService
+import com.apiapp.api_quota_helper.ui.theme.ApiQuotaHelperTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            ApiQuotaHelperTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MainApp()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MainApp() {
+    val context = LocalContext.current
+    val repository = remember { AccountRepository(context.applicationContext) }
+    val quotaService = remember { QuotaService() }
+    val viewModel: MainViewModel = viewModel {
+        MainViewModel(repository, quotaService)
+    }
+    MainScreen(viewModel = viewModel)
+}
