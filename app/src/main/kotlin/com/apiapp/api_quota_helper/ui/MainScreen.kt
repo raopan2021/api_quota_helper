@@ -152,7 +152,7 @@ fun AccountCard(
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val quota = accountWithQuota.quota
-    val remainingPercent = quota?.let { (it.remaining / it.amount * 100).toInt() } ?: 0
+    val remainingPercent = quota?.let { (it.remaining / it.amount * 100) } ?: 0.0
     
     // 根据剩余额度比例确定颜色
     val statusColor = when {
@@ -213,7 +213,7 @@ fun AccountCard(
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
-                                "${remainingPercent}%",
+                                "${String.format("%.1f", remainingPercent.toDouble())}%",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = statusColor
