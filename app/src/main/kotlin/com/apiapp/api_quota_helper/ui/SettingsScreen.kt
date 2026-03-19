@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import com.apiapp.api_quota_helper.BuildConfig
 import com.apiapp.api_quota_helper.data.model.AppSettings
 import com.apiapp.api_quota_helper.data.service.LogBuffer
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -87,7 +88,7 @@ fun SettingsScreen(
                     }
 
                     if (needsUpdate) {
-                        val assets = json.optJSONArray("assets") ?: JSONObject()
+                        val assets = json.optJSONArray("assets") ?: JSONArray()
                         var downloadUrl: String? = null
                         if (assets.length() > 0) {
                             for (i in 0 until assets.length()) {
