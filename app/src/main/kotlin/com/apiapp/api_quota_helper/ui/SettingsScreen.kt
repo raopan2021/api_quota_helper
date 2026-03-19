@@ -3,6 +3,8 @@ package com.apiapp.api_quota_helper.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,8 +19,20 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.apiapp.api_quota_helper.BuildConfig
 import com.apiapp.api_quota_helper.data.model.AppSettings
 import com.apiapp.api_quota_helper.data.service.LogBuffer
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
+
+data class UpdateInfo(
+    val version: String,
+    val downloadUrl: String,
+    val releaseNotes: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +45,92 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     var interval by remember { mutableFloatStateOf(settings.refreshIntervalMinutes.toFloat()) }
+
+    // 更新检查状态
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateCheckError by remember { mutableStateOf<String?>(null) }
+
+    // 检查更新
+    fun checkForUpdate() {
+        isCheckingUpdate = true
+        updateCheckError = null
+        kotlinx.coroutines.MainScope().launch {
+            try {
+                val url = URL("https://api.github.com/repos/raopan2021/api_quota_helper/releases/latest")
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.setRequestProperty("Accept", "application/json")
+                conn.connectTimeout = 10000
+                conn.readTimeout = 10000
+                conn.connect()
+
+                val responseCode = conn.responseCode
+                if (responseCode == 200) {
+                    val reader = java.io.BufferedReader(java.io.InputStreamReader(conn.inputStream))
+                    val response = reader.readText()
+                    reader.close()
+                    conn.disconnect()
+
+                    val json = JSONObject(response)
+                    val tagName = json.getString("tag_name").removePrefix("v")
+                    val latestVersion = tagName
+                    val currentVersion = BuildConfig.VERSION_NAME
+
+                    val needsUpdate = try {
+                        val latest = latestVersion.split(".").map { it.toInt() }
+                        val current = currentVersion.split(".").map { it.toInt() }
+                        latest.zip(current).any { it.first > it.second } ||
+                            (latest.size > current.size && latest.take(current.size) == current)
+                    } catch (e: Exception) {
+                        latestVersion != currentVersion
+                    }
+
+                    if (needsUpdate) {
+                        val assets = json.optJSONArray("assets") ?: JSONObject()
+                        var downloadUrl: String? = null
+                        if (assets.length() > 0) {
+                            for (i in 0 until assets.length()) {
+                                val asset = assets.getJSONObject(i)
+                                if (asset.getString("name").endsWith(".apk")) {
+                                    downloadUrl = asset.getString("browser_download_url")
+                                    break
+                                }
+                            }
+                        }
+                        updateInfo = UpdateInfo(
+                            version = latestVersion,
+                            downloadUrl = downloadUrl ?: json.getString("html_url"),
+                            releaseNotes = json.optString("body", "")
+                        )
+                    }
+                } else {
+                    updateCheckError = "检查更新失败: $responseCode"
+                }
+            } catch (e: Exception) {
+                updateCheckError = "检查更新失败: ${e.message}"
+            } finally {
+                isCheckingUpdate = false
+            }
+        }
+    }
+
+    // 首次进入设置时检查更新
+    LaunchedEffect(Unit) {
+        checkForUpdate()
+    }
+
+    // 下载并安装
+    fun downloadAndInstall(downloadUrl: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            // 如果无法直接下载，打开浏览器
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+            context.startActivity(intent)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -132,7 +232,7 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -141,30 +241,93 @@ fun SettingsScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("版本: ${com.apiapp.api_quota_helper.BuildConfig.VERSION_NAME}")
+                    Text("版本: ${BuildConfig.VERSION_NAME}")
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("作者: raopan")
+
+                    // 更新提示
+                    if (isCheckingUpdate) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("检查更新中...", style = MaterialTheme.typography.bodySmall)
+                        }
+                    } else if (updateInfo != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "发现新版本: v${updateInfo!!.version}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (updateInfo!!.releaseNotes.isNotEmpty()) {
+                                        Text(
+                                            text = updateInfo!!.releaseNotes.take(100) + if (updateInfo!!.releaseNotes.length > 100) "..." else "",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = { downloadAndInstall(updateInfo!!.downloadUrl) }
+                                ) {
+                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("更新")
+                                }
+                            }
+                        }
+                    } else if (updateCheckError != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = updateCheckError!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
-                    
+
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         FilledTonalButton(
                             onClick = {
-                                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/raopan2021/api_quota_helper")))
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper")))
                             }
                         ) {
                             Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("GitHub")
                         }
-                        
+
                         FilledTonalButton(
                             onClick = {
-                                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/raopan2021/api_quota_helper/releases")))
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases")))
                             }
                         ) {
                             Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("下载")
+                        }
+
+                        FilledTonalButton(
+                            onClick = { checkForUpdate() }
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("检查更新")
                         }
                     }
                 }
