@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">API 额度助手</string>
-    <string name="widget_description">显示 API 额度信息</string>
 </resources>
