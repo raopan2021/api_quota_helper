@@ -112,13 +112,14 @@ fun MainScreen(
     if (showAddDialog) {
         AddEditAccountDialog(
             editingAccount = uiState.editingAccount,
+            saveError = uiState.saveError,
             onDismiss = {
                 showAddDialog = false
                 viewModel.dismissDialog()
             },
             onSave = { username, token ->
-                viewModel.saveAccount(username, token)
-                showAddDialog = false
+                val ok = viewModel.saveAccount(username, token)
+                if (ok) showAddDialog = false
             }
         )
     }
@@ -420,6 +421,7 @@ fun AccountCard(
 @Composable
 fun AddEditAccountDialog(
     editingAccount: UserAccount?,
+    saveError: String?,
     onDismiss: () -> Unit,
     onSave: (String, String) -> Unit
 ) {
@@ -519,6 +521,34 @@ fun AddEditAccountDialog(
                         Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("识别")
+                    }
+                }
+
+                // 保存错误提示
+                if (saveError != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = saveError,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
                     }
                 }
             }

@@ -16,7 +16,8 @@ data class MainUiState(
     val isRefreshing: Boolean = false,
     val showAddDialog: Boolean = false,
     val editingAccount: UserAccount? = null,
-    val settings: AppSettings = AppSettings()
+    val settings: AppSettings = AppSettings(),
+    val saveError: String? = null
 )
 
 class MainViewModel(
@@ -86,21 +87,34 @@ class MainViewModel(
     }
 
     fun showAddDialog() {
-        _uiState.update { it.copy(showAddDialog = true, editingAccount = null) }
+        _uiState.update { it.copy(showAddDialog = true, editingAccount = null, saveError = null) }
     }
 
     fun showEditDialog(account: UserAccount) {
-        _uiState.update { it.copy(showAddDialog = true, editingAccount = account) }
+        _uiState.update { it.copy(showAddDialog = true, editingAccount = account, saveError = null) }
     }
 
     fun dismissDialog() {
-        _uiState.update { it.copy(showAddDialog = false, editingAccount = null) }
+        _uiState.update { it.copy(showAddDialog = false, editingAccount = null, saveError = null) }
     }
 
-    fun saveAccount(username: String, token: String) {
+    fun saveAccount(username: String, token: String): Boolean {
         val trimmedUsername = username.trim()
         val trimmedToken = token.trim()
-        
+
+        // 检查重复（编辑时排除自身）
+        val others = _uiState.value.accounts.filter { it.account.id != _uiState.value.editingAccount?.id }
+        when {
+            others.any { it.account.username == trimmedUsername } -> {
+                _uiState.update { it.copy(saveError = "用户名「$trimmedUsername」已存在") }
+                return false
+            }
+            others.any { it.account.token == trimmedToken } -> {
+                _uiState.update { it.copy(saveError = "Token 已存在（不可重复添加同一账户）") }
+                return false
+            }
+        }
+
         viewModelScope.launch {
             val existingAccount = _uiState.value.editingAccount
             val account = UserAccount(
@@ -129,6 +143,7 @@ class MainViewModel(
             }
             _uiState.update { it.copy(accounts = currentAccounts) }
         }
+        return true
     }
 
     private fun refreshAccount(account: UserAccount) {
