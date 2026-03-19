@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
                             }
                             "settings" -> currentScreen = "main"
                             "logs" -> currentScreen = "settings"
+                            "update" -> currentScreen = "settings"
                         }
                     }
                     
@@ -145,11 +146,15 @@ class MainActivity : ComponentActivity() {
                                     onDarkModeChange = { viewModel.updateDarkMode(it) },
                                     onRefreshIntervalChange = { viewModel.updateRefreshInterval(it) },
                                     onBack = { currentScreen = "main" },
-                                    onShowLogs = { currentScreen = "logs" }
+                                    onShowLogs = { currentScreen = "logs" },
+                                    onNavigateToUpdate = { currentScreen = "update" }
                                 )
                             }
                             "logs" -> {
                                 LogScreen(onBack = { currentScreen = "settings" })
+                            }
+                            "update" -> {
+                                UpdateScreen(onBack = { currentScreen = "settings" })
                             }
                         }
                     }
