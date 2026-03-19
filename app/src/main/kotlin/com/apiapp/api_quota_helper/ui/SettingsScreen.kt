@@ -161,8 +161,10 @@ fun SettingsScreen(
                     val needsUpdate = try {
                         val latest = latestVersion.split(".").map { it.toInt() }
                         val current = currentVersion.split(".").map { it.toInt() }
-                        latest.zip(current).any { it.first > it.second } ||
-                            (latest.size > current.size && latest.take(current.size) == current)
+                        val size = maxOf(latest.size, current.size)
+                        val latestPadded = latest + List(size - latest.size) { 0 }
+                        val currentPadded = current + List(size - current.size) { 0 }
+                        latestPadded.zip(currentPadded).any { it.first > it.second }
                     } catch (e: Exception) {
                         latestVersion != currentVersion
                     }
@@ -416,28 +418,6 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-
-            // 桌面组件
-            Text(
-                text = "桌面组件",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "添加桌面组件方法：",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("1. 长按手机桌面", style = MaterialTheme.typography.bodyMedium)
-                    Text("2. 选择「小组件」", style = MaterialTheme.typography.bodyMedium)
-                    Text("3. 找到「API额度」并添加", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
         }
     }
 }
