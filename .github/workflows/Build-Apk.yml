@@ -38,14 +38,3 @@ jobs:
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
-
-      - name: 自动打tag
-        run: |
-          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
-          if [ -n "$VERSION" ]; then
-            git config --local user.name "github-actions[bot]"
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-            git tag -f v$VERSION
-            git push origin v$VERSION --force
-            echo "Tagged v$VERSION"
-          fi
