@@ -189,7 +189,12 @@ fun SettingsScreen(
                     updateCheckError = "检查更新失败: $responseCode"
                 }
             } catch (e: Exception) {
-                updateCheckError = "检查更新失败: ${e.message}"
+                val msg = e.message ?: ""
+                updateCheckError = when {
+                    msg.contains("Unable to resolve host") || msg.contains("No address associated") -> "网络连接失败，请检查网络"
+                    msg.contains("timeout") || msg.contains("timed out") -> "连接超时，请稍后重试"
+                    else -> "检查更新失败"
+                }
             } finally {
                 isCheckingUpdate = false
             }
@@ -327,14 +332,7 @@ fun SettingsScreen(
                     Text("作者: raopan")
 
                     // 更新提示
-                    if (isCheckingUpdate) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("检查更新中...", style = MaterialTheme.typography.bodySmall)
-                        }
-                    } else if (updateInfo != null) {
+                    if (updateInfo != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Card(
                             colors = CardDefaults.cardColors(
@@ -383,14 +381,17 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        FilledTonalButton(
-                            onClick = {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper")))
-                            }
+                        OutlinedButton(
+                            onClick = { checkForUpdate() },
+                            enabled = !isCheckingUpdate
                         ) {
-                            Icon(Icons.Default.Code, contentDescription = null, modifier = Modifier.size(18.dp))
+                            if (isCheckingUpdate) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            }
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("GitHub")
+                            Text(if (isCheckingUpdate) "检查中..." else "检查更新")
                         }
 
                         FilledTonalButton(
@@ -398,17 +399,9 @@ fun SettingsScreen(
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases")))
                             }
                         ) {
-                            Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("下载")
-                        }
-
-                        FilledTonalButton(
-                            onClick = { checkForUpdate() }
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("检查更新")
+                            Text("下载更新")
                         }
                     }
                 }
