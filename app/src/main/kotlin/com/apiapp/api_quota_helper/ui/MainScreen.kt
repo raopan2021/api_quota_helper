@@ -41,20 +41,28 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("API 额度助手") },
-                actions = {
-                    IconButton(onClick = { viewModel.refreshAllQuotas(force = true) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "刷新")
-                    }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "设置")
-                    }
-                }
+                title = { Text("API 额度助手") }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "添加账户")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SmallFloatingActionButton(
+                    onClick = onNavigateToSettings,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = "设置")
+                }
+                SmallFloatingActionButton(
+                    onClick = { viewModel.refreshAllQuotas(force = true) },
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                }
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "添加账户")
+                }
             }
         }
     ) { padding ->
