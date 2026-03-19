@@ -13,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
@@ -422,26 +424,73 @@ fun AddEditAccountDialog(
 ) {
     var username by remember { mutableStateOf(editingAccount?.username ?: "") }
     var token by remember { mutableStateOf(editingAccount?.token ?: "") }
+    var parseError by remember { mutableStateOf<String?>(null) }
+    val clipboardManager = LocalClipboardManager.current
+
+    fun tryParse(text: String) {
+        parseError.value = null
+        val result = parseAccountFromClipboard(text)
+        if (result != null) {
+            username = result.first
+            token = result.second
+        } else {
+            parseError.value = "无法识别：请确保包含「API Key」和「账户」字段"
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (editingAccount != null) "编辑账户" else "添加账户") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = username,
-                    onValueChange = { username = it },
+                    onValueChange = { username = it; parseError.value = null },
                     label = { Text("用户名") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = token,
-                    onValueChange = { token = it },
+                    onValueChange = { token = it; parseError.value = null },
                     label = { Text("Token (API Key)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // 从剪贴板粘贴按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = {
+                            val clipboardText = clipboardManager.getText()?.text ?: ""
+                            if (clipboardText.isNotEmpty()) {
+                                tryParse(clipboardText)
+                            } else {
+                                parseError.value = "剪贴板为空"
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.ContentPaste,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("从剪贴板粘贴")
+                    }
+                }
+
+                // 解析错误提示
+                if (parseError.value != null) {
+                    Text(
+                        text = parseError.value!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         },
         confirmButton = {
@@ -533,4 +582,26 @@ private fun calculateCountdown(resetTime: String): String {
     } catch (e: Exception) {
         ""
     }
+}
+
+/**
+ * 从剪贴板文本自动识别账户信息
+ * 支持格式：
+ * API Key：sk-xxxx
+ * 账户：username
+ */
+private fun parseAccountFromClipboard(text: String): Pair<String, String>? {
+    if (text.isBlank()) return null
+
+    // 提取 API Key（支持 "API Key：" 或 "API Key: "）
+    val apiKey = Regex("""API Key[：:]\s*(\S+)""")
+        .find(text)?.groupValues?.get(1)
+        ?: return null
+
+    // 提取账户名（支持 "账户：" 或 "账户: "）
+    val username = Regex("""账户[：:]\s*(\S+)""")
+        .find(text)?.groupValues?.get(1)
+        ?: return null
+
+    return Pair(username, apiKey)
 }
