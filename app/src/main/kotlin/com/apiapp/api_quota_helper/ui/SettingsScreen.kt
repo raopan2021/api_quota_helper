@@ -138,92 +138,113 @@ fun SettingsScreen(
         updateCheckError = null
         kotlinx.coroutines.MainScope().launch {
             try {
-                val url = URL("https://api.github.com/repos/raopan2021/api_quota_helper/releases/latest")
-                val conn = url.openConnection() as HttpURLConnection
+                val apiUrl = URL("https://api.github.com/repos/raopan2021/api_quota_helper/releases/latest")
+                val conn = apiUrl.openConnection() as HttpURLConnection
                 conn.requestMethod = "GET"
-                conn.setRequestProperty("Accept", "application/json")
+                conn.setRequestProperty("Accept", "application/vnd.github+json")
+                conn.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
                 conn.connectTimeout = 10000
                 conn.readTimeout = 10000
-                conn.connect()
 
                 val responseCode = conn.responseCode
+                val responseMessage = conn.responseMessage ?: ""
+
                 if (responseCode == 200) {
                     val reader = java.io.BufferedReader(java.io.InputStreamReader(conn.inputStream))
                     val response = reader.readText()
                     reader.close()
                     conn.disconnect()
 
-                    val json = JSONObject(response)
-                    val tagName = json.getString("tag_name").removePrefix("v")
-                    val latestVersion = tagName
-                    val currentVersion = BuildConfig.VERSION_NAME
+                    try {
+                        val json = JSONObject(response)
+                        val tagName = json.getString("tag_name").removePrefix("v")
+                        val latestVersion = tagName
+                        val currentVersion = BuildConfig.VERSION_NAME
 
-                    val needsUpdate = try {
-                        val latest = latestVersion.split(".").map { it.toInt() }
-                        val current = currentVersion.split(".").map { it.toInt() }
-                        val size = maxOf(latest.size, current.size)
-                        val latestPadded = latest + List(size - latest.size) { 0 }
-                        val currentPadded = current + List(size - current.size) { 0 }
-                        latestPadded.zip(currentPadded).any { it.first > it.second }
-                    } catch (e: Exception) {
-                        latestVersion != currentVersion
-                    }
+                        val needsUpdate = try {
+                            val latest = latestVersion.split(".").map { it.toInt() }
+                            val current = currentVersion.split(".").map { it.toInt() }
+                            val size = maxOf(latest.size, current.size)
+                            val latestPadded = latest + List(size - latest.size) { 0 }
+                            val currentPadded = current + List(size - current.size) { 0 }
+                            latestPadded.zip(currentPadded).any { it.first > it.second }
+                        } catch (e: Exception) {
+                            latestVersion != currentVersion
+                        }
 
-                    if (needsUpdate) {
-                        val assets = json.optJSONArray("assets") ?: JSONArray()
-                        var downloadUrl: String? = null
-                        if (assets.length() > 0) {
-                            for (i in 0 until assets.length()) {
-                                val asset = assets.getJSONObject(i)
-                                if (asset.getString("name").endsWith(".apk")) {
-                                    downloadUrl = asset.getString("browser_download_url")
-                                    break
+                        if (needsUpdate) {
+                            val assets = json.optJSONArray("assets") ?: JSONArray()
+                            var downloadUrl: String? = null
+                            if (assets.length() > 0) {
+                                for (i in 0 until assets.length()) {
+                                    val asset = assets.getJSONObject(i)
+                                    if (asset.getString("name").endsWith(".apk")) {
+                                        downloadUrl = asset.getString("browser_download_url")
+                                        break
+                                    }
                                 }
                             }
+                            updateInfo = UpdateInfo(
+                                version = latestVersion,
+                                downloadUrl = downloadUrl ?: json.getString("html_url"),
+                                releaseNotes = json.optString("body", "")
+                            )
+                            LogBuffer.logResponse(
+                                logType = "检查更新",
+                                username = "检查更新",
+                                requestBody = "当前版本: $currentVersion",
+                                success = true,
+                                responseCode = 200,
+                                responseMessage = "发现新版本 v$latestVersion",
+                                responseBody = response
+                            )
+                        } else {
+                            LogBuffer.logResponse(
+                                logType = "检查更新",
+                                username = "检查更新",
+                                requestBody = "当前版本: $currentVersion",
+                                success = true,
+                                responseCode = 200,
+                                responseMessage = "已是最新版本 v$currentVersion",
+                                responseBody = response
+                            )
                         }
-                        updateInfo = UpdateInfo(
-                            version = latestVersion,
-                            downloadUrl = downloadUrl ?: json.getString("html_url"),
-                            releaseNotes = json.optString("body", "")
-                        )
+                    } catch (e: java.lang.Exception) {
                         LogBuffer.logResponse(
                             logType = "检查更新",
                             username = "检查更新",
-                            requestBody = "当前版本: $currentVersion",
-                            success = true,
-                            responseCode = 200,
-                            responseMessage = "发现新版本 v$latestVersion",
-                            responseBody = response
+                            requestBody = "",
+                            success = false,
+                            responseCode = responseCode,
+                            responseMessage = "解析响应失败",
+                            responseBody = "",
+                            errorMessage = "${e::class.java.simpleName}: ${e.message}"
                         )
-                    } else {
-                        LogBuffer.logResponse(
-                            logType = "检查更新",
-                            username = "检查更新",
-                            requestBody = "当前版本: $currentVersion",
-                            success = true,
-                            responseCode = 200,
-                            responseMessage = "已是最新版本 v$currentVersion",
-                            responseBody = response
-                        )
+                        updateCheckError = "解析响应失败"
                     }
                 } else {
-                    updateCheckError = "检查更新失败: $responseCode"
+                    updateCheckError = "检查更新失败: HTTP $responseCode"
                     LogBuffer.logResponse(
                         logType = "检查更新",
                         username = "检查更新",
                         requestBody = "",
                         success = false,
                         responseCode = responseCode,
-                        responseMessage = "HTTP $responseCode",
+                        responseMessage = "HTTP $responseCode $responseMessage",
                         responseBody = "",
-                        errorMessage = "检查更新失败: $responseCode"
+                        errorMessage = "检查更新失败: HTTP $responseCode"
                     )
                 }
-            } catch (e: Exception) {
-                val msg = e.message ?: ""
+            } catch (e: java.lang.Exception) {
+                val errorDetail = "${e::class.java.simpleName}: ${e.message}"
                 val errorMessage = when {
-                    msg.contains("Unable to resolve host") || msg.contains("No address associated") -> "网络连接失败，请检查网络"
-                    msg.contains("timeout") || msg.contains("timed out") -> "连接超时，请稍后重试"
+                    e.message.isNullOrEmpty() -> "网络异常，请检查网络连接"
+                    e.message!!.contains("Unable to resolve host", ignoreCase = true) ||
+                    e.message!!.contains("No address associated", ignoreCase = true) -> "网络连接失败，请检查网络"
+                    e.message!!.contains("timeout", ignoreCase = true) ||
+                    e.message!!.contains("timed out", ignoreCase = true) -> "连接超时，请稍后重试"
+                    e.message!!.contains("reset", ignoreCase = true) ||
+                    e.message!!.contains("refused", ignoreCase = true) -> "连接被拒绝，请稍后重试"
                     else -> "检查更新失败"
                 }
                 updateCheckError = errorMessage
@@ -235,7 +256,7 @@ fun SettingsScreen(
                     responseCode = 0,
                     responseMessage = "检查更新失败",
                     responseBody = "",
-                    errorMessage = msg.ifEmpty { errorMessage }
+                    errorMessage = if (e.message.isNullOrEmpty()) errorMessage else errorDetail
                 )
             } finally {
                 isCheckingUpdate = false
@@ -589,10 +610,6 @@ fun LogScreen(onBack: () -> Unit) {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("log", LogBuffer.getAsString(entry)))
                                     showCopiedTip = true
-                                },
-                                onDelete = {
-                                    LogBuffer.delete(entry.id)
-                                    refreshKey++
                                 }
                             )
                         }
@@ -641,43 +658,9 @@ fun LogScreen(onBack: () -> Unit) {
 @Composable
 fun SwipeToDeleteCard(
     entry: LogBuffer.LogEntry,
-    onCopy: () -> Unit,
-    onDelete: () -> Unit
+    onCopy: () -> Unit
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                onDelete()
-                true
-            } else {
-                false
-            }
-        }
-    )
-
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFF44336).copy(alpha = 0.2f))
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "删除",
-                    tint = Color(0xFFF44336)
-                )
-            }
-        },
-        content = {
-            LogEntryCardContent(entry = entry, onCopy = onCopy)
-        },
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true
-    )
+    LogEntryCardContent(entry = entry, onCopy = onCopy)
 }
 
 @Composable
@@ -697,32 +680,32 @@ fun LogEntryCardContent(
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // 顶部：时间和状态 + 复制按钮
+            // 顶部：状态 + 时间 + 复制按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (entry.success) "成功" else "失败",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = accentColor
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Icon(
                         imageVector = if (entry.success) Icons.Default.CheckCircle else Icons.Default.Error,
                         contentDescription = null,
                         tint = accentColor,
                         modifier = Modifier.size(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = entry.time,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (entry.success) "成功" else "失败",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = accentColor
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     IconButton(
