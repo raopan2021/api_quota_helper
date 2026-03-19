@@ -13,8 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
@@ -428,7 +426,6 @@ fun AddEditAccountDialog(
     var username by remember { mutableStateOf(editingAccount?.username ?: "") }
     var token by remember { mutableStateOf(editingAccount?.token ?: "") }
     var pasteContent by remember { mutableStateOf("") }
-    val clipboardManager = LocalClipboardManager.current
 
     fun doRecognize(text: String) {
         val result = parseAccountFromClipboard(text)
@@ -497,20 +494,6 @@ fun AddEditAccountDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            val text = clipboardManager.getText()?.text ?: ""
-                            pasteContent = text
-                            if (text.isNotEmpty()) {
-                                doRecognize(text)
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("粘贴并识别")
-                    }
                     FilledTonalButton(
                         onClick = {
                             if (pasteContent.isNotEmpty()) {
