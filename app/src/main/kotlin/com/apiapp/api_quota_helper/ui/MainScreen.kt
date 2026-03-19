@@ -427,17 +427,6 @@ fun AddEditAccountDialog(
     var parseError by remember { mutableStateOf<String?>(null) }
     val clipboardManager = LocalClipboardManager.current
 
-    fun tryParse(text: String) {
-        parseError.value = null
-        val result = parseAccountFromClipboard(text)
-        if (result != null) {
-            username = result.first
-            token = result.second
-        } else {
-            parseError.value = "无法识别：请确保包含「API Key」和「账户」字段"
-        }
-    }
-
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (editingAccount != null) "编辑账户" else "添加账户") },
@@ -445,14 +434,14 @@ fun AddEditAccountDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = username,
-                    onValueChange = { username = it; parseError.value = null },
+                    onValueChange = { username = it; parseError = null },
                     label = { Text("用户名") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = token,
-                    onValueChange = { token = it; parseError.value = null },
+                    onValueChange = { token = it; parseError = null },
                     label = { Text("Token (API Key)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -467,9 +456,16 @@ fun AddEditAccountDialog(
                         onClick = {
                             val clipboardText = clipboardManager.getText()?.text ?: ""
                             if (clipboardText.isNotEmpty()) {
-                                tryParse(clipboardText)
+                                val result = parseAccountFromClipboard(clipboardText)
+                                if (result != null) {
+                                    username = result.first
+                                    token = result.second
+                                    parseError = null
+                                } else {
+                                    parseError = "无法识别：请确保包含「API Key」和「账户」字段"
+                                }
                             } else {
-                                parseError.value = "剪贴板为空"
+                                parseError = "剪贴板为空"
                             }
                         }
                     ) {
@@ -484,9 +480,9 @@ fun AddEditAccountDialog(
                 }
 
                 // 解析错误提示
-                if (parseError.value != null) {
+                if (parseError != null) {
                     Text(
-                        text = parseError.value!!,
+                        text = parseError!!,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
