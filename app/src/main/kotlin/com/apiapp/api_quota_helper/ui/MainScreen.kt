@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.apiapp.api_quota_helper.data.model.AccountWithQuota
 import com.apiapp.api_quota_helper.data.model.QuotaData
 import com.apiapp.api_quota_helper.data.model.UserAccount
+import com.apiapp.api_quota_helper.data.service.LogBuffer
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
@@ -424,8 +425,34 @@ fun AddEditAccountDialog(
 ) {
     var username by remember { mutableStateOf(editingAccount?.username ?: "") }
     var token by remember { mutableStateOf(editingAccount?.token ?: "") }
-    var parseError by remember { mutableStateOf<String?>(null) }
+    var pasteContent by remember { mutableStateOf("") }
     val clipboardManager = LocalClipboardManager.current
+
+    fun doRecognize(text: String) {
+        val result = parseAccountFromClipboard(text)
+        if (result != null) {
+            username = result.first
+            token = result.second
+            LogBuffer.logResponse(
+                username = "账户识别",
+                requestBody = text,
+                success = true,
+                responseCode = 200,
+                responseMessage = "识别成功",
+                responseBody = "用户名：${result.first}，Token：${result.second}"
+            )
+        } else {
+            LogBuffer.logResponse(
+                username = "账户识别",
+                requestBody = text,
+                success = false,
+                responseCode = 0,
+                responseMessage = "识别失败",
+                responseBody = "",
+                errorMessage = "无法识别：请确保包含「API Key」和「账户」字段"
+            )
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -434,58 +461,65 @@ fun AddEditAccountDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = username,
-                    onValueChange = { username = it; parseError = null },
+                    onValueChange = { username = it },
                     label = { Text("用户名") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
                     value = token,
-                    onValueChange = { token = it; parseError = null },
+                    onValueChange = { token = it },
                     label = { Text("Token (API Key)") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // 从剪贴板粘贴按钮
+                HorizontalDivider()
+
+                Text(
+                    text = "从剪贴板识别",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                OutlinedTextField(
+                    value = pasteContent,
+                    onValueChange = { pasteContent = it },
+                    label = { Text("粘贴内容（支持识别 API Key 和账户）") },
+                    minLines = 3,
+                    maxLines = 6,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TextButton(
+                    OutlinedButton(
                         onClick = {
-                            val clipboardText = clipboardManager.getText()?.text ?: ""
-                            if (clipboardText.isNotEmpty()) {
-                                val result = parseAccountFromClipboard(clipboardText)
-                                if (result != null) {
-                                    username = result.first
-                                    token = result.second
-                                    parseError = null
-                                } else {
-                                    parseError = "无法识别：请确保包含「API Key」和「账户」字段"
-                                }
-                            } else {
-                                parseError = "剪贴板为空"
+                            val text = clipboardManager.getText()?.text ?: ""
+                            pasteContent = text
+                            if (text.isNotEmpty()) {
+                                doRecognize(text)
                             }
-                        }
+                        },
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            Icons.Default.ContentPaste,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("从剪贴板粘贴")
+                        Text("粘贴并识别")
                     }
-                }
-
-                // 解析错误提示
-                if (parseError != null) {
-                    Text(
-                        text = parseError!!,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                    FilledTonalButton(
+                        onClick = {
+                            if (pasteContent.isNotEmpty()) {
+                                doRecognize(pasteContent)
+                            }
+                        },
+                        enabled = pasteContent.isNotEmpty(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("识别")
+                    }
                 }
             }
         },
