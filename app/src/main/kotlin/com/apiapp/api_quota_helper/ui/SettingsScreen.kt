@@ -236,15 +236,12 @@ fun SettingsScreen(
                     )
                 }
             } catch (e: java.lang.Exception) {
-                val errorDetail = "${e::class.java.simpleName}: ${e.message}"
+                val exType = e::class.java.simpleName
                 val errorMessage = when {
-                    e.message.isNullOrEmpty() -> "网络异常，请检查网络连接"
-                    e.message!!.contains("Unable to resolve host", ignoreCase = true) ||
-                    e.message!!.contains("No address associated", ignoreCase = true) -> "网络连接失败，请检查网络"
-                    e.message!!.contains("timeout", ignoreCase = true) ||
-                    e.message!!.contains("timed out", ignoreCase = true) -> "连接超时，请稍后重试"
-                    e.message!!.contains("reset", ignoreCase = true) ||
-                    e.message!!.contains("refused", ignoreCase = true) -> "连接被拒绝，请稍后重试"
+                    exType == "UnknownHostException" || exType == "DNSException" -> "无法解析域名，请检查网络"
+                    exType == "SocketTimeoutException" || exType == "ConnectTimeoutException" -> "连接超时，请稍后重试"
+                    exType == "ConnectException" || exType == "ConnectionRejectedException" -> "连接被拒绝，请检查网络"
+                    exType == "FileNotFoundException" -> "资源不存在"
                     else -> "检查更新失败"
                 }
                 updateCheckError = errorMessage
@@ -256,7 +253,7 @@ fun SettingsScreen(
                     responseCode = 0,
                     responseMessage = "检查更新失败",
                     responseBody = "",
-                    errorMessage = if (e.message.isNullOrEmpty()) errorMessage else errorDetail
+                    errorMessage = "$exType: ${e.message ?: "（无详细信息）"}"
                 )
             } finally {
                 isCheckingUpdate = false
@@ -610,6 +607,10 @@ fun LogScreen(onBack: () -> Unit) {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("log", LogBuffer.getAsString(entry)))
                                     showCopiedTip = true
+                                },
+                                onDelete = {
+                                    LogBuffer.delete(entry.id)
+                                    refreshKey++
                                 }
                             )
                         }
@@ -658,9 +659,43 @@ fun LogScreen(onBack: () -> Unit) {
 @Composable
 fun SwipeToDeleteCard(
     entry: LogBuffer.LogEntry,
-    onCopy: () -> Unit
+    onCopy: () -> Unit,
+    onDelete: () -> Unit
 ) {
-    LogEntryCardContent(entry = entry, onCopy = onCopy)
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF44336).copy(alpha = 0.2f))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "删除",
+                    tint = Color(0xFFF44336)
+                )
+            }
+        },
+        content = {
+            LogEntryCardContent(entry = entry, onCopy = onCopy)
+        },
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true
+    )
 }
 
 @Composable
