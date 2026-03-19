@@ -27,8 +27,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // 手写JSON格式化（不用org.json避免崩溃）
 private fun formatJson(jsonString: String): String {
@@ -138,122 +140,120 @@ fun SettingsScreen(
         updateCheckError = null
         kotlinx.coroutines.MainScope().launch {
             try {
-                val apiUrl = URL("https://api.github.com/repos/raopan2021/api_quota_helper/releases/latest")
-                val conn = apiUrl.openConnection() as HttpURLConnection
-                conn.requestMethod = "GET"
-                conn.setRequestProperty("Accept", "application/vnd.github+json")
-                conn.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-                conn.connectTimeout = 10000
-                conn.readTimeout = 10000
+                val result = withContext(Dispatchers.IO) {
+                    val apiUrl = URL("https://api.github.com/repos/raopan2021/api_quota_helper/releases/latest")
+                    val conn = apiUrl.openConnection() as HttpURLConnection
+                    conn.requestMethod = "GET"
+                    conn.setRequestProperty("Accept", "application/vnd.github+json")
+                    conn.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+                    conn.connectTimeout = 10000
+                    conn.readTimeout = 10000
 
-                val responseCode = conn.responseCode
-                val responseMessage = conn.responseMessage ?: ""
+                    val responseCode = conn.responseCode
+                    val responseMessage = conn.responseMessage ?: ""
 
-                if (responseCode == 200) {
-                    val reader = java.io.BufferedReader(java.io.InputStreamReader(conn.inputStream))
-                    val response = reader.readText()
-                    reader.close()
-                    conn.disconnect()
+                    if (responseCode == 200) {
+                        val reader = java.io.BufferedReader(java.io.InputStreamReader(conn.inputStream))
+                        val response = reader.readText()
+                        reader.close()
+                        conn.disconnect()
 
-                    try {
-                        val json = JSONObject(response)
-                        val tagName = json.getString("tag_name").removePrefix("v")
-                        val latestVersion = tagName
-                        val currentVersion = BuildConfig.VERSION_NAME
+                        Result.success(response to responseCode)
+                    } else {
+                        Result.failure(Exception("HTTP $responseCode $responseMessage"))
+                    }
+                }
 
-                        val needsUpdate = try {
-                            val latest = latestVersion.split(".").map { it.toInt() }
-                            val current = currentVersion.split(".").map { it.toInt() }
-                            val size = maxOf(latest.size, current.size)
-                            val latestPadded = latest + List(size - latest.size) { 0 }
-                            val currentPadded = current + List(size - current.size) { 0 }
-                            latestPadded.zip(currentPadded).any { it.first > it.second }
-                        } catch (e: Exception) {
-                            latestVersion != currentVersion
-                        }
+                result.fold(
+                    onSuccess = { (response, _) ->
+                        try {
+                            val json = JSONObject(response)
+                            val tagName = json.getString("tag_name").removePrefix("v")
+                            val latestVersion = tagName
+                            val currentVersion = BuildConfig.VERSION_NAME
 
-                        if (needsUpdate) {
-                            val assets = json.optJSONArray("assets") ?: JSONArray()
-                            var downloadUrl: String? = null
-                            if (assets.length() > 0) {
-                                for (i in 0 until assets.length()) {
-                                    val asset = assets.getJSONObject(i)
-                                    if (asset.getString("name").endsWith(".apk")) {
-                                        downloadUrl = asset.getString("browser_download_url")
-                                        break
+                            val needsUpdate = try {
+                                val latest = latestVersion.split(".").map { it.toInt() }
+                                val current = currentVersion.split(".").map { it.toInt() }
+                                val size = maxOf(latest.size, current.size)
+                                val latestPadded = latest + List(size - latest.size) { 0 }
+                                val currentPadded = current + List(size - current.size) { 0 }
+                                latestPadded.zip(currentPadded).any { it.first > it.second }
+                            } catch (e: Exception) {
+                                latestVersion != currentVersion
+                            }
+
+                            if (needsUpdate) {
+                                val assets = json.optJSONArray("assets") ?: JSONArray()
+                                var downloadUrl: String? = null
+                                if (assets.length() > 0) {
+                                    for (i in 0 until assets.length()) {
+                                        val asset = assets.getJSONObject(i)
+                                        if (asset.getString("name").endsWith(".apk")) {
+                                            downloadUrl = asset.getString("browser_download_url")
+                                            break
+                                        }
                                     }
                                 }
+                                updateInfo = UpdateInfo(
+                                    version = latestVersion,
+                                    downloadUrl = downloadUrl ?: json.getString("html_url"),
+                                    releaseNotes = json.optString("body", "")
+                                )
+                                LogBuffer.logResponse(
+                                    logType = "检查更新",
+                                    username = "检查更新",
+                                    requestBody = "当前版本: $currentVersion",
+                                    success = true,
+                                    responseCode = 200,
+                                    responseMessage = "发现新版本 v$latestVersion",
+                                    responseBody = response
+                                )
+                            } else {
+                                LogBuffer.logResponse(
+                                    logType = "检查更新",
+                                    username = "检查更新",
+                                    requestBody = "当前版本: $currentVersion",
+                                    success = true,
+                                    responseCode = 200,
+                                    responseMessage = "已是最新版本 v$currentVersion",
+                                    responseBody = response
+                                )
                             }
-                            updateInfo = UpdateInfo(
-                                version = latestVersion,
-                                downloadUrl = downloadUrl ?: json.getString("html_url"),
-                                releaseNotes = json.optString("body", "")
-                            )
+                        } catch (e: java.lang.Exception) {
                             LogBuffer.logResponse(
                                 logType = "检查更新",
                                 username = "检查更新",
-                                requestBody = "当前版本: $currentVersion",
-                                success = true,
+                                requestBody = "",
+                                success = false,
                                 responseCode = 200,
-                                responseMessage = "发现新版本 v$latestVersion",
-                                responseBody = response
+                                responseMessage = "解析响应失败",
+                                responseBody = "",
+                                errorMessage = "${e::class.java.simpleName}: ${e.message}"
                             )
-                        } else {
-                            LogBuffer.logResponse(
-                                logType = "检查更新",
-                                username = "检查更新",
-                                requestBody = "当前版本: $currentVersion",
-                                success = true,
-                                responseCode = 200,
-                                responseMessage = "已是最新版本 v$currentVersion",
-                                responseBody = response
-                            )
+                            updateCheckError = "解析响应失败"
                         }
-                    } catch (e: java.lang.Exception) {
+                    },
+                    onFailure = { error ->
+                        val exType = error::class.java.simpleName
+                        val errorMessage = when {
+                            exType == "UnknownHostException" || exType == "DNSException" -> "无法解析域名，请检查网络"
+                            exType == "SocketTimeoutException" || exType == "ConnectTimeoutException" -> "连接超时，请稍后重试"
+                            exType == "ConnectException" || exType == "ConnectionRejectedException" -> "连接被拒绝，请检查网络"
+                            else -> "检查更新失败"
+                        }
+                        updateCheckError = errorMessage
                         LogBuffer.logResponse(
                             logType = "检查更新",
                             username = "检查更新",
                             requestBody = "",
                             success = false,
-                            responseCode = responseCode,
-                            responseMessage = "解析响应失败",
+                            responseCode = 0,
+                            responseMessage = "检查更新失败",
                             responseBody = "",
-                            errorMessage = "${e::class.java.simpleName}: ${e.message}"
+                            errorMessage = "$exType: ${error.message ?: "（无详细信息）"}"
                         )
-                        updateCheckError = "解析响应失败"
                     }
-                } else {
-                    updateCheckError = "检查更新失败: HTTP $responseCode"
-                    LogBuffer.logResponse(
-                        logType = "检查更新",
-                        username = "检查更新",
-                        requestBody = "",
-                        success = false,
-                        responseCode = responseCode,
-                        responseMessage = "HTTP $responseCode $responseMessage",
-                        responseBody = "",
-                        errorMessage = "检查更新失败: HTTP $responseCode"
-                    )
-                }
-            } catch (e: java.lang.Exception) {
-                val exType = e::class.java.simpleName
-                val errorMessage = when {
-                    exType == "UnknownHostException" || exType == "DNSException" -> "无法解析域名，请检查网络"
-                    exType == "SocketTimeoutException" || exType == "ConnectTimeoutException" -> "连接超时，请稍后重试"
-                    exType == "ConnectException" || exType == "ConnectionRejectedException" -> "连接被拒绝，请检查网络"
-                    exType == "FileNotFoundException" -> "资源不存在"
-                    else -> "检查更新失败"
-                }
-                updateCheckError = errorMessage
-                LogBuffer.logResponse(
-                    logType = "检查更新",
-                    username = "检查更新",
-                    requestBody = "",
-                    success = false,
-                    responseCode = 0,
-                    responseMessage = "检查更新失败",
-                    responseBody = "",
-                    errorMessage = "$exType: ${e.message ?: "（无详细信息）"}"
                 )
             } finally {
                 isCheckingUpdate = false
@@ -715,44 +715,46 @@ fun LogEntryCardContent(
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // 顶部：状态 + 时间 + 复制按钮
+            // 第一行：成功/失败 + 图标
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (entry.success) "成功" else "失败",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = accentColor
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Icon(
+                    imageVector = if (entry.success) Icons.Default.CheckCircle else Icons.Default.Error,
+                    contentDescription = null,
+                    tint = accentColor,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 第二行：时间和复制按钮（左对齐）
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = if (entry.success) "成功" else "失败",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = accentColor
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = entry.time,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = onCopy,
+                    modifier = Modifier.size(28.dp)
+                ) {
                     Icon(
-                        imageVector = if (entry.success) Icons.Default.CheckCircle else Icons.Default.Error,
-                        contentDescription = null,
-                        tint = accentColor,
+                        Icons.Default.ContentCopy,
+                        contentDescription = "复制",
                         modifier = Modifier.size(16.dp)
                     )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = entry.time,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(
-                        onClick = onCopy,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = "复制",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
                 }
             }
 
