@@ -37,13 +37,14 @@ private fun formatJson(jsonString: String): String {
     var indent = 0
     var inString = false
     var escape = false
-    var prevChar = '\n'
+    var prevWasClose = false
 
     for (char in jsonString) {
         when {
             escape -> {
                 result.append(char)
                 escape = false
+                prevWasClose = false
             }
             char == '\\' -> {
                 result.append(char)
@@ -51,41 +52,59 @@ private fun formatJson(jsonString: String): String {
             }
             inString -> {
                 result.append(char)
-                if (char == '"' && prevChar != '\\') {
+                if (char == '"' && !escape) {
                     inString = false
+                    prevWasClose = false
                 }
             }
             char == '"' -> {
                 result.append(char)
                 inString = true
+                prevWasClose = false
             }
             char == '{' || char == '[' -> {
+                if (!prevWasClose) {
+                    result.append('\n')
+                    result.append("  ".repeat(indent))
+                }
                 result.append(char)
                 indent++
-                result.append('\n')
-                result.append("  ".repeat(indent))
+                prevWasClose = false
             }
             char == '}' || char == ']' -> {
                 indent--
-                result.append('\n')
-                result.append("  ".repeat(indent))
+                if (prevWasClose) {
+                    // Don't add newline before consecutive closes
+                } else {
+                    result.append('\n')
+                    result.append("  ".repeat(indent))
+                }
                 result.append(char)
+                prevWasClose = true
+            }
+            char == ':' -> {
+                result.append(char)
+                result.append(' ')
+                prevWasClose = false
             }
             char == ',' -> {
                 result.append(char)
                 result.append('\n')
                 result.append("  ".repeat(indent))
+                prevWasClose = false
             }
-            char == ':' -> {
-                result.append(char)
-                result.append(' ')
+            char == ' ' -> {
+                // skip extra spaces
             }
-            char == ' ' && prevChar == ' ' -> { /* skip extra spaces */ }
             else -> {
+                if (prevWasClose) {
+                    result.append('\n')
+                    result.append("  ".repeat(indent))
+                }
                 result.append(char)
+                prevWasClose = false
             }
         }
-        prevChar = char
     }
     return result.toString().trim()
 }
