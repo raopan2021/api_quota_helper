@@ -24,6 +24,7 @@ object LogBuffer {
         val time: String,
         val success: Boolean,
         val username: String,
+        val requestBody: String,
         val responseCode: Int,
         val responseMessage: String,
         val responseBody: String,
@@ -37,24 +38,26 @@ object LogBuffer {
         }
     }
     
-    fun logRequest(username: String) {
+    fun logRequest(username: String, requestBody: String) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         add(LogEntry(
             time = time,
             success = false,
             username = username,
+            requestBody = requestBody,
             responseCode = 0,
             responseMessage = "请求中...",
             responseBody = ""
         ))
     }
-    
-    fun logResponse(username: String, success: Boolean, responseCode: Int, responseMessage: String, responseBody: String, errorMessage: String? = null) {
+
+    fun logResponse(username: String, requestBody: String, success: Boolean, responseCode: Int, responseMessage: String, responseBody: String, errorMessage: String? = null) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         add(LogEntry(
             time = time,
             success = success,
             username = username,
+            requestBody = requestBody,
             responseCode = responseCode,
             responseMessage = responseMessage,
             responseBody = responseBody,
@@ -71,9 +74,9 @@ object LogBuffer {
     fun clear() = logs.clear()
     
     fun getAsString(entry: LogEntry): String = if (entry.success) {
-        "[${entry.time}] ✅ ${entry.username}\n状态码: ${entry.responseCode} ${entry.responseMessage}\n响应:\n${formatJsonForCopy(entry.responseBody)}"
+        "[${entry.time}] ✅ ${entry.username}\n请求:\n${entry.requestBody}\n响应:\n${formatJsonForCopy(entry.responseBody)}"
     } else {
-        "[${entry.time}] ❌ ${entry.username}\n状态码: ${entry.responseCode} ${entry.responseMessage}\n错误: ${entry.errorMessage ?: entry.responseBody}"
+        "[${entry.time}] ❌ ${entry.username}\n请求:\n${entry.requestBody}\n错误: ${entry.errorMessage ?: entry.responseBody}"
     }
     
     fun getAllAsString(): String = getAll().joinToString("\n---\n") { getAsString(it) }
@@ -93,13 +96,18 @@ class QuotaService() {
 
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> = withContext(Dispatchers.IO) {
         var lastException: Exception? = null
-        
+
         // 最多重试3次
         repeat(3) { attempt ->
+            // 请求体在循环内创建以便在catch中访问
+            val jsonBody = JSONObject().apply {
+                put("username", account.username)
+                put("token", account.token)
+            }.toString()
+
             try {
                 val url = URL("http://v2api.aicodee.com/chaxun/query")
-                LogBuffer.logRequest(account.username)
-                
+
                 val connection = url.openConnection() as HttpURLConnection
                 connection.requestMethod = "POST"
                 connection.doOutput = true
@@ -109,11 +117,7 @@ class QuotaService() {
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.setRequestProperty("Accept", "application/json")
 
-                // 发送请求体
-                val jsonBody = JSONObject().apply {
-                    put("username", account.username)
-                    put("token", account.token)
-                }.toString()
+                LogBuffer.logRequest(account.username, jsonBody)
 
                 OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
                     writer.write(jsonBody)
@@ -123,11 +127,11 @@ class QuotaService() {
                 // 读取响应
                 val responseCode = connection.responseCode
                 val responseMessage = connection.responseMessage
-                
+
                 val reader = BufferedReader(InputStreamReader(
-                    if (responseCode == HttpURLConnection.HTTP_OK) 
-                        connection.inputStream 
-                    else 
+                    if (responseCode == HttpURLConnection.HTTP_OK)
+                        connection.inputStream
+                    else
                         connection.errorStream,
                     "UTF-8"
                 ))
@@ -140,7 +144,7 @@ class QuotaService() {
                 reader.close()
 
                 val body = response.toString()
-                
+
                 // 记录响应日志
                 if (responseCode != HttpURLConnection.HTTP_OK || body.isEmpty() || !body.contains("\"success\":true")) {
                     val errorMsg = when {
@@ -148,18 +152,18 @@ class QuotaService() {
                         body.isEmpty() -> "空响应"
                         else -> JSONObject(body).optString("message", "查询失败")
                     }
-                    LogBuffer.logResponse(account.username, false, responseCode, responseMessage, body, errorMsg)
-                    
+                    LogBuffer.logResponse(account.username, jsonBody, false, responseCode, responseMessage, body, errorMsg)
+
                     if (attempt < 2) {
                         // 还有重试机会，记录"重试中"
                         lastException = Exception(errorMsg)
                         kotlinx.coroutines.delay(1000) // 1秒后重试
                         return@repeat
                     }
-                    
+
                     return@withContext Result.failure(Exception(errorMsg))
                 } else {
-                    LogBuffer.logResponse(account.username, true, responseCode, responseMessage, body)
+                    LogBuffer.logResponse(account.username, jsonBody, true, responseCode, responseMessage, body)
                 }
 
                 if (body.isEmpty()) {
@@ -190,7 +194,7 @@ class QuotaService() {
 
                 return@withContext Result.success(quotaData)
             } catch (e: Exception) {
-                LogBuffer.logResponse(account.username, false, 0, "", "", e.message)
+                LogBuffer.logResponse(account.username, jsonBody, false, 0, "", "", e.message)
                 lastException = e
                 
                 if (attempt < 2) {

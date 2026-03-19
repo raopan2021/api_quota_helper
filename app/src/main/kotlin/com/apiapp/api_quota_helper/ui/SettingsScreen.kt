@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +29,66 @@ import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+
+// 手写JSON格式化（不用org.json避免崩溃）
+private fun formatJson(jsonString: String): String {
+    if (jsonString.isEmpty()) return jsonString
+    val result = StringBuilder()
+    var indent = 0
+    var inString = false
+    var escape = false
+    var prevChar = '\n'
+
+    for (char in jsonString) {
+        when {
+            escape -> {
+                result.append(char)
+                escape = false
+            }
+            char == '\\' -> {
+                result.append(char)
+                escape = true
+            }
+            inString -> {
+                result.append(char)
+                if (char == '"' && prevChar != '\\') {
+                    inString = false
+                }
+            }
+            char == '"' -> {
+                result.append(char)
+                inString = true
+            }
+            char == '{' || char == '[' -> {
+                result.append(char)
+                indent++
+                result.append('\n')
+                result.append("  ".repeat(indent))
+            }
+            char == '}' || char == ']' -> {
+                indent--
+                result.append('\n')
+                result.append("  ".repeat(indent))
+                result.append(char)
+            }
+            char == ',' -> {
+                result.append(char)
+                result.append('\n')
+                result.append("  ".repeat(indent))
+            }
+            char == ':' -> {
+                result.append(char)
+                result.append(' ')
+            }
+            char == ' ' && prevChar == ' ' -> { /* skip extra spaces */ }
+            else -> {
+                result.append(char)
+            }
+        }
+        prevChar = char
+    }
+    return result.toString().trim()
+}
 
 data class UpdateInfo(
     val version: String,
@@ -421,24 +482,50 @@ fun LogScreen(onBack: () -> Unit) {
                     )
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(logs, key = { it.id }) { entry ->
-                        LogEntryCard(
-                            entry = entry,
-                            onCopy = {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                clipboard.setPrimaryClip(ClipData.newPlainText("log", LogBuffer.getAsString(entry)))
-                                showCopiedTip = true
-                            },
-                            onDelete = {
-                                LogBuffer.delete(entry.id)
-                                refreshKey++
-                            }
-                        )
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // 左滑删除提示
+                    if (logs.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.TouchApp,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                "左滑可删除",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(logs, key = { it.id }) { entry ->
+                            SwipeToDeleteCard(
+                                entry = entry,
+                                onCopy = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("log", LogBuffer.getAsString(entry)))
+                                    showCopiedTip = true
+                                },
+                                onDelete = {
+                                    LogBuffer.delete(entry.id)
+                                    refreshKey++
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -480,11 +567,53 @@ fun LogScreen(onBack: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LogEntryCard(
+fun SwipeToDeleteCard(
     entry: LogBuffer.LogEntry,
     onCopy: () -> Unit,
     onDelete: () -> Unit
+) {
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == SwipeToDismissBoxValue.EndToStart) {
+                onDelete()
+                true
+            } else {
+                false
+            }
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFFF44336).copy(alpha = 0.2f))
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "删除",
+                    tint = Color(0xFFF44336)
+                )
+            }
+        },
+        content = {
+            LogEntryCardContent(entry = entry, onCopy = onCopy)
+        },
+        enableDismissFromStartToEnd = false,
+        enableDismissFromEndToStart = true
+    )
+}
+
+@Composable
+fun LogEntryCardContent(
+    entry: LogBuffer.LogEntry,
+    onCopy: () -> Unit
 ) {
     val backgroundColor = if (entry.success) {
         Color(0xFF4CAF50).copy(alpha = 0.1f)
@@ -492,13 +621,13 @@ fun LogEntryCard(
         Color(0xFFF44336).copy(alpha = 0.1f)
     }
     val accentColor = if (entry.success) Color(0xFF4CAF50) else Color(0xFFF44336)
-    
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // 顶部：时间和状态 + 操作按钮
+            // 顶部：时间和状态 + 复制按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -536,22 +665,11 @@ fun LogEntryCard(
                             modifier = Modifier.size(16.dp)
                         )
                     }
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Delete,
-                            contentDescription = "删除",
-                            modifier = Modifier.size(16.dp),
-                            tint = Color(0xFFF44336)
-                        )
-                    }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // 用户名
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -567,10 +685,35 @@ fun LogEntryCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+
+            // 请求体
+            if (entry.requestBody.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Upload,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "请求",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = formatJson(entry.requestBody),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                )
+            }
+
             // 响应码和消息
+            Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.Code,
@@ -585,7 +728,7 @@ fun LogEntryCard(
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
-            
+
             // 错误消息或响应体
             if (entry.errorMessage != null) {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -597,10 +740,10 @@ fun LogEntryCard(
             } else if (entry.responseBody.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = entry.responseBody,
+                    text = formatJson(entry.responseBody),
                     style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
         }
