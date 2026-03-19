@@ -26,17 +26,6 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - name: Build debug APK
-        run: |
-          chmod 777 ./gradlew
-          ./gradlew app:assembleDebug
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
-
       - name: 获取版本号
         id: version
         run: |
@@ -44,25 +33,58 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "TAG_NAME=v$VERSION" >> $GITHUB_OUTPUT
 
-      - name: 创建 Release（仅非 chore commit）
-        if: ${{ !startsWith(github.event.head_commit.message, 'chore:') && !startsWith(github.event.head_commit.message, 'chore(') }}
+      - name: 配置签名信息
         run: |
-          # 构建 release APK
-          chmod 777 ./gradlew
-          ./gradlew app:assembleRelease
-
-          # 生成 changelog（取上次 tag 之后的 commit）
-          LAST_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
-          CHANGELOG=""
-          if [ -n "$LAST_TAG" ]; then
-            CHANGELOG="$(git log $LAST_TAG..HEAD --oneline --format='- %s')"
+          if [ -n "${{ secrets.KEY_STORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEY_STORE_BASE64 }}" | base64 --decode > app/api_quota_helper.jks
+            echo "KEY_STORE_PASSWORD=${{ secrets.KEY_STORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
           fi
 
-          # 创建 GitHub Release
-          TAG_NAME="v${{ steps.version.outputs.VERSION }}"
-          gh release create "$TAG_NAME" \
-            --title "Release $TAG_NAME" \
-            --notes "$CHANGELOG" \
-            app/build/outputs/apk/release/app-release.apk
+      - name: 构建 Debug APK
+        run: |
+          chmod 777 ./gradlew
+          ./gradlew app:assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.event.head_commit.message, 'chore:') && !startsWith(github.event.head_commit.message, 'chore(') }}
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+      - name: 构建 Release APK 并创建 Release
+        if: ${{ !startsWith(github.event.head_commit.message, 'chore:') && !startsWith(github.event.head_commit.message, 'chore(') }}
+        run: |
+          chmod 777 ./gradlew
+          ./gradlew app:assembleRelease
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: 生成 Changelog
+        if: ${{ !startsWith(github.event.head_commit.message, 'chore:') && !startsWith(github.event.head_commit.message, 'chore(') }}
+        id: changelog
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LAST_TAG" ]; then
+            CHANGELOG="$(git log $LAST_TAG..HEAD --oneline --format='- %s')"
+          else
+            CHANGELOG="Initial release"
+          fi
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 创建 GitHub Release
+        if: ${{ !startsWith(github.event.head_commit.message, 'chore:') && !startsWith(github.event.head_commit.message, 'chore(') }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG_NAME }}
+          name: Release ${{ steps.version.outputs.TAG_NAME }}
+          body: ${{ steps.changelog.outputs.CHANGELOG }}
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.TAG_NAME, 'beta') || contains(steps.version.outputs.TAG_NAME, 'alpha') }}
+          files: app/build/outputs/apk/release/app-release.apk
