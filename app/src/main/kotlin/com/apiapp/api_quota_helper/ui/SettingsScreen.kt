@@ -6,8 +6,6 @@ import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,10 +16,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.apiapp.api_quota_helper.data.model.AppSettings
 import com.apiapp.api_quota_helper.data.service.LogBuffer
-import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -450,34 +448,16 @@ fun LogEntryCard(
                 )
             } else if (entry.responseBody.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                    )
-                ) {
-                    Text(
-                        text = formatJson(entry.responseBody),
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .verticalScroll(rememberScrollState())
-                            .heightIn(max = 200.dp)
-                    )
-                }
+                Text(
+                    text = entry.responseBody,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    maxLines = 10,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }
 }
 
-// JSON格式化
-private fun formatJson(jsonString: String): String {
-    return try {
-        val json = JSONObject(jsonString)
-        json.toString(2) // 2空格缩进
-    } catch (e: Exception) {
-        jsonString
-    }
-}
