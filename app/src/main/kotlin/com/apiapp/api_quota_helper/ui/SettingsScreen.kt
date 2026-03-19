@@ -32,6 +32,12 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+private sealed class ApiResult {
+    data class Success(val body: String) : ApiResult()
+    data class HttpError(val code: Int, val message: String) : ApiResult()
+    data object RateLimited : ApiResult()
+}
+
 // 手写JSON格式化（不用org.json避免崩溃）
 private fun formatJson(jsonString: String): String {
     if (jsonString.isEmpty()) return jsonString
@@ -157,17 +163,18 @@ fun SettingsScreen(
                         val response = reader.readText()
                         reader.close()
                         conn.disconnect()
-
-                        Result.success(response to responseCode)
+                        ApiResult.Success(response)
+                    } else if (responseCode == 403) {
+                        ApiResult.RateLimited
                     } else {
-                        Result.failure(Exception("HTTP $responseCode $responseMessage"))
+                        ApiResult.HttpError(responseCode, responseMessage)
                     }
                 }
 
-                result.fold(
-                    onSuccess = { (response, _) ->
+                when (result) {
+                    is ApiResult.Success -> {
                         try {
-                            val json = JSONObject(response)
+                            val json = JSONObject(result.body)
                             val tagName = json.getString("tag_name").removePrefix("v")
                             val latestVersion = tagName
                             val currentVersion = BuildConfig.VERSION_NAME
@@ -207,7 +214,7 @@ fun SettingsScreen(
                                     success = true,
                                     responseCode = 200,
                                     responseMessage = "发现新版本 v$latestVersion",
-                                    responseBody = response
+                                    responseBody = result.body
                                 )
                             } else {
                                 LogBuffer.logResponse(
@@ -217,7 +224,7 @@ fun SettingsScreen(
                                     success = true,
                                     responseCode = 200,
                                     responseMessage = "已是最新版本 v$currentVersion",
-                                    responseBody = response
+                                    responseBody = result.body
                                 )
                             }
                         } catch (e: java.lang.Exception) {
@@ -233,28 +240,34 @@ fun SettingsScreen(
                             )
                             updateCheckError = "解析响应失败"
                         }
-                    },
-                    onFailure = { error ->
-                        val exType = error::class.java.simpleName
-                        val errorMessage = when {
-                            exType == "UnknownHostException" || exType == "DNSException" -> "无法解析域名，请检查网络"
-                            exType == "SocketTimeoutException" || exType == "ConnectTimeoutException" -> "连接超时，请稍后重试"
-                            exType == "ConnectException" || exType == "ConnectionRejectedException" -> "连接被拒绝，请检查网络"
-                            else -> "检查更新失败"
-                        }
-                        updateCheckError = errorMessage
+                    }
+                    is ApiResult.RateLimited -> {
+                        updateCheckError = "请求过于频繁，请稍后再试（GitHub API限流）"
                         LogBuffer.logResponse(
                             logType = "检查更新",
                             username = "检查更新",
                             requestBody = "",
                             success = false,
-                            responseCode = 0,
-                            responseMessage = "检查更新失败",
+                            responseCode = 403,
+                            responseMessage = "rate limit exceeded",
                             responseBody = "",
-                            errorMessage = "$exType: ${error.message ?: "（无详细信息）"}"
+                            errorMessage = "GitHub API 请求过于频繁，每小时最多60次，请稍后再试"
                         )
                     }
-                )
+                    is ApiResult.HttpError -> {
+                        updateCheckError = "检查更新失败: HTTP ${result.code}"
+                        LogBuffer.logResponse(
+                            logType = "检查更新",
+                            username = "检查更新",
+                            requestBody = "",
+                            success = false,
+                            responseCode = result.code,
+                            responseMessage = result.message,
+                            responseBody = "",
+                            errorMessage = "HTTP ${result.code} ${result.message}"
+                        )
+                    }
+                }
             } finally {
                 isCheckingUpdate = false
             }
@@ -715,8 +728,11 @@ fun LogEntryCardContent(
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // 第一行：成功/失败 + 图标
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // 第一行：成功/失败 + 图标 + 时间 + 复制按钮（全部左对齐）
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = if (entry.success) "成功" else "失败",
                     style = MaterialTheme.typography.bodySmall,
@@ -730,22 +746,13 @@ fun LogEntryCardContent(
                     tint = accentColor,
                     modifier = Modifier.size(16.dp)
                 )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // 第二行：时间和复制按钮（左对齐）
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = entry.time,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 IconButton(
                     onClick = onCopy,
                     modifier = Modifier.size(28.dp)
