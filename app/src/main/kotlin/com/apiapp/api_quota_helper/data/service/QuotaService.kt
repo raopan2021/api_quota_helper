@@ -23,6 +23,7 @@ object LogBuffer {
         val id: Long = System.currentTimeMillis(),
         val time: String,
         val success: Boolean,
+        val logType: String,
         val username: String,
         val requestBody: String,
         val responseCode: Int,
@@ -38,11 +39,12 @@ object LogBuffer {
         }
     }
     
-    fun logRequest(username: String, requestBody: String) {
+    fun logRequest(logType: String, username: String, requestBody: String) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         add(LogEntry(
             time = time,
             success = false,
+            logType = logType,
             username = username,
             requestBody = requestBody,
             responseCode = 0,
@@ -51,11 +53,12 @@ object LogBuffer {
         ))
     }
 
-    fun logResponse(username: String, requestBody: String, success: Boolean, responseCode: Int, responseMessage: String, responseBody: String, errorMessage: String? = null) {
+    fun logResponse(logType: String, username: String, requestBody: String, success: Boolean, responseCode: Int, responseMessage: String, responseBody: String, errorMessage: String? = null) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         add(LogEntry(
             time = time,
             success = success,
+            logType = logType,
             username = username,
             requestBody = requestBody,
             responseCode = responseCode,
@@ -74,9 +77,9 @@ object LogBuffer {
     fun clear() = logs.clear()
     
     fun getAsString(entry: LogEntry): String = if (entry.success) {
-        "[${entry.time}] ✅ ${entry.username}\n请求:\n${entry.requestBody}\n响应:\n${formatJsonForCopy(entry.responseBody)}"
+        "[${entry.time}] [${entry.logType}] ✅ ${entry.username}\n请求:\n${entry.requestBody}\n响应:\n${formatJsonForCopy(entry.responseBody)}"
     } else {
-        "[${entry.time}] ❌ ${entry.username}\n请求:\n${entry.requestBody}\n错误: ${entry.errorMessage ?: entry.responseBody}"
+        "[${entry.time}] [${entry.logType}] ❌ ${entry.username}\n请求:\n${entry.requestBody}\n错误: ${entry.errorMessage ?: entry.responseBody}"
     }
     
     fun getAllAsString(): String = getAll().joinToString("\n---\n") { getAsString(it) }
@@ -117,7 +120,7 @@ class QuotaService() {
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.setRequestProperty("Accept", "application/json")
 
-                LogBuffer.logRequest(account.username, jsonBody)
+                LogBuffer.logRequest("额度查询", account.username, jsonBody)
 
                 OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
                     writer.write(jsonBody)
@@ -152,7 +155,7 @@ class QuotaService() {
                         body.isEmpty() -> "空响应"
                         else -> JSONObject(body).optString("message", "查询失败")
                     }
-                    LogBuffer.logResponse(account.username, jsonBody, false, responseCode, responseMessage, body, errorMsg)
+                    LogBuffer.logResponse("额度查询", account.username, jsonBody, false, responseCode, responseMessage, body, errorMsg)
 
                     if (attempt < 2) {
                         // 还有重试机会，记录"重试中"
@@ -163,7 +166,7 @@ class QuotaService() {
 
                     return@withContext Result.failure(Exception(errorMsg))
                 } else {
-                    LogBuffer.logResponse(account.username, jsonBody, true, responseCode, responseMessage, body)
+                    LogBuffer.logResponse("额度查询", account.username, jsonBody, true, responseCode, responseMessage, body)
                 }
 
                 if (body.isEmpty()) {
@@ -194,7 +197,7 @@ class QuotaService() {
 
                 return@withContext Result.success(quotaData)
             } catch (e: Exception) {
-                LogBuffer.logResponse(account.username, jsonBody, false, 0, "", "", e.message)
+                LogBuffer.logResponse("额度查询", account.username, jsonBody, false, 0, "", "", e.message)
                 lastException = e
                 
                 if (attempt < 2) {

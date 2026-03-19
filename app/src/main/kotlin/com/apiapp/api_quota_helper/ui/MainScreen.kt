@@ -436,6 +436,7 @@ fun AddEditAccountDialog(
             username = result.first
             token = result.second
             LogBuffer.logResponse(
+                logType = "账户识别",
                 username = "账户识别",
                 requestBody = text,
                 success = true,
@@ -445,6 +446,7 @@ fun AddEditAccountDialog(
             )
         } else {
             LogBuffer.logResponse(
+                logType = "账户识别",
                 username = "账户识别",
                 requestBody = text,
                 success = false,

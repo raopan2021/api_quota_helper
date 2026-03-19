@@ -186,17 +186,57 @@ fun SettingsScreen(
                             downloadUrl = downloadUrl ?: json.getString("html_url"),
                             releaseNotes = json.optString("body", "")
                         )
+                        LogBuffer.logResponse(
+                            logType = "检查更新",
+                            username = "检查更新",
+                            requestBody = "当前版本: $currentVersion",
+                            success = true,
+                            responseCode = 200,
+                            responseMessage = "发现新版本 v$latestVersion",
+                            responseBody = response
+                        )
+                    } else {
+                        LogBuffer.logResponse(
+                            logType = "检查更新",
+                            username = "检查更新",
+                            requestBody = "当前版本: $currentVersion",
+                            success = true,
+                            responseCode = 200,
+                            responseMessage = "已是最新版本 v$currentVersion",
+                            responseBody = response
+                        )
                     }
                 } else {
                     updateCheckError = "检查更新失败: $responseCode"
+                    LogBuffer.logResponse(
+                        logType = "检查更新",
+                        username = "检查更新",
+                        requestBody = "",
+                        success = false,
+                        responseCode = responseCode,
+                        responseMessage = "HTTP $responseCode",
+                        responseBody = "",
+                        errorMessage = "检查更新失败: $responseCode"
+                    )
                 }
             } catch (e: Exception) {
                 val msg = e.message ?: ""
-                updateCheckError = when {
+                val errorMessage = when {
                     msg.contains("Unable to resolve host") || msg.contains("No address associated") -> "网络连接失败，请检查网络"
                     msg.contains("timeout") || msg.contains("timed out") -> "连接超时，请稍后重试"
                     else -> "检查更新失败"
                 }
+                updateCheckError = errorMessage
+                LogBuffer.logResponse(
+                    logType = "检查更新",
+                    username = "检查更新",
+                    requestBody = "",
+                    success = false,
+                    responseCode = 0,
+                    responseMessage = "检查更新失败",
+                    responseBody = "",
+                    errorMessage = msg.ifEmpty { errorMessage }
+                )
             } finally {
                 isCheckingUpdate = false
             }
@@ -429,9 +469,14 @@ fun LogScreen(onBack: () -> Unit) {
     var showDeleteAllConfirm by remember { mutableStateOf(false) }
     var showCopiedTip by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
+    var selectedLogType by remember { mutableStateOf<String?>(null) }
 
     // 每次访问时获取最新日志
-    val logs = remember(refreshKey) { LogBuffer.getAll() }
+    val allLogs = remember(refreshKey) { LogBuffer.getAll() }
+    val logs = if (selectedLogType != null) allLogs.filter { it.logType == selectedLogType } else allLogs
+
+    // 获取所有日志类型
+    val logTypes = remember(allLogs) { allLogs.map { it.logType }.distinct().sorted() }
 
     LaunchedEffect(showCopiedTip) {
         if (showCopiedTip) {
@@ -476,7 +521,7 @@ fun LogScreen(onBack: () -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        "暂无日志",
+                        if (selectedLogType != null) "暂无「$selectedLogType」相关日志" else "暂无日志",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
@@ -504,6 +549,31 @@ fun LogScreen(onBack: () -> Unit) {
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                             )
+                        }
+                    }
+
+                    // 分类筛选
+                    if (logTypes.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = selectedLogType == null,
+                                onClick = { selectedLogType = null },
+                                label = { Text("全部") }
+                            )
+                            logTypes.forEach { type ->
+                                FilterChip(
+                                    selected = selectedLogType == type,
+                                    onClick = {
+                                        selectedLogType = if (selectedLogType == type) null else type
+                                    },
+                                    label = { Text(type) }
+                                )
+                            }
                         }
                     }
 
