@@ -10,46 +10,7 @@ env:
   JAVA_VERSION: '17'
 
 jobs:
-  android-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-
-      - name: Build Android
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew app:assembleRelease --no-daemon --no-build-cache
-
-      - name: Extract version
-        id: extract-version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "VERSION=$VERSION"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-apk-${{ steps.extract-version.outputs.VERSION }}
-          path: android/app/build/outputs/apk/release/api-quota-helper-${{ steps.extract-version.outputs.VERSION }}.apk
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: false
-          prerelease: false
-          files: android/app/build/outputs/apk/release/api-quota-helper-${{ steps.extract-version.outputs.VERSION }}.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  windows-build:
+  windows-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -73,19 +34,46 @@ jobs:
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "VERSION=$VERSION"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-windows-${{ steps.extract-version.outputs.VERSION }}
-          path: windows/publish/ApiQuotaHelper.exe
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: false
-          prerelease: false
-          files: windows/publish/ApiQuotaHelper.exe
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd windows
+          gh release create v${{ steps.extract-version.outputs.VERSION }} \
+            --title "v${{ steps.extract-version.outputs.VERSION }}" \
+            --notes "API Quota Helper Windows版 v${{ steps.extract-version.outputs.VERSION }}" \
+            ApiQuotaHelper.exe
+
+  android-release:
+    needs: windows-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Build Android
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew app:assembleRelease --no-daemon --no-build-cache
+
+      - name: Extract version
+        id: extract-version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Upload to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd android
+          gh release upload v${{ steps.extract-version.outputs.VERSION }} \
+            app/build/outputs/apk/release/api-quota-helper-${{ steps.extract-version.outputs.VERSION }}.apk \
+            --clobber
