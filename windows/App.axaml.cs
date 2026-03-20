@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Styling;
 using Avalonia.Markup.Xaml;
 
 namespace ApiQuotaHelper;
@@ -17,7 +18,16 @@ public partial class App : Application
         {
             desktop.MainWindow = new MainWindow();
         }
-
         base.OnFrameworkInitializationCompleted();
+    }
+
+    public static void SetTheme(bool dark)
+    {
+        if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.MainWindow!.RequestedThemeVariant = dark
+                ? ThemeVariant.Dark
+                : ThemeVariant.Light;
+        }
     }
 }

@@ -1,4 +1,8 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 using System.Windows.Input;
 using ApiQuotaHelper.Models;
 using ApiQuotaHelper.Services;
@@ -160,6 +164,36 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ScanClipboardAsync()
+    {
+        try
+        {
+            var mainWindow = (App.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+            if (mainWindow == null) return;
+            var topLevel = TopLevel.GetTopLevel(mainWindow);
+            if (topLevel == null) return;
+            var text = await topLevel.Clipboard.GetTextAsync();
+            if (string.IsNullOrWhiteSpace(text)) return;
+            var (username, token) = ParseAccount(text);
+            if (!string.IsNullOrEmpty(token))
+            {
+                DialogToken = token;
+                if (!string.IsNullOrEmpty(username)) DialogUsername = username;
+            }
+        }
+        catch { }
+    }
+
+    private static (string? username, string? token) ParseAccount(string text)
+    {
+        var tokenMatch = Regex.Match(text, @"API Key[：:]\s*(\S+)") ?? Regex.Match(text, @"(sk-[\w-]+)");
+        var usernameMatch = Regex.Match(text, @"账户[：:]\s*(\S+)");
+        string? token = tokenMatch?.Groups.Count > 1 ? tokenMatch.Groups[1].Value : null;
+        string? username = usernameMatch?.Groups.Count > 1 ? usernameMatch.Groups[1].Value : null;
+        return (username, token);
+    }
+
+    [RelayCommand]
     private void DeleteAccount(AccountVm acc)
     {
         _accountService.DeleteAccount(acc.Account.Id);
@@ -170,6 +204,7 @@ public partial class MainViewModel : ObservableObject
     private void ToggleDarkMode()
     {
         IsDarkMode = !IsDarkMode;
+        App.SetTheme(IsDarkMode);
         var s = new AppSettings { DarkMode = IsDarkMode, RefreshIntervalSeconds = RefreshIntervalSec };
         _settingsService.Save(s);
     }
@@ -241,6 +276,13 @@ public partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void CloseSettings() => ShowSettings = false;
+
+    [RelayCommand]
+    private void OpenDownloadUrl()
+    {
+        if (UpdateInfo == null || string.IsNullOrEmpty(UpdateInfo.DownloadUrl)) return;
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = UpdateInfo.DownloadUrl, UseShellExecute = true }); } catch { }
+    }
 
     private async Task CheckUpdateAsync()
     {

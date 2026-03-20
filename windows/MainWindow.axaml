@@ -80,7 +80,10 @@
           <TextBlock Text="用户名"/>
           <TextBox Text="{Binding DialogUsername}" Watermark="username"/>
           <TextBlock Text="Token"/>
-          <TextBox Text="{Binding DialogToken}" Watermark="sk-xxxx" PasswordChar="*"/>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBox Grid.Column="0" Text="{Binding DialogToken}" Watermark="sk-xxxx" PasswordChar="*"/>
+            <Button Grid.Column="1" Content="扫描" Command="{Binding ScanClipboardCommand}" Margin="8,0,0,0" Padding="8,4"/>
+          </Grid>
           <TextBlock Text="{Binding DialogError}" Foreground="Red"
                      IsVisible="{Binding DialogError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
@@ -125,6 +128,8 @@
                 </MultiBinding>
               </TextBlock.Text>
             </TextBlock>
+            <Button Content="下载安装包" IsVisible="{Binding UpdateInfo, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    Command="{Binding OpenDownloadUrlCommand}" Margin="0,4,0,0" HorizontalAlignment="Left" Padding="8,4"/>
           </StackPanel>
         </StackPanel>
       </Border>
