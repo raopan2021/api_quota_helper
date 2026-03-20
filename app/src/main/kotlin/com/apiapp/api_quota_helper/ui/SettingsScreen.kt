@@ -222,67 +222,19 @@ fun SettingsScreen(
                                     downloadUrl = downloadUrl ?: json.getString("html_url"),
                                     releaseNotes = json.optString("body", "")
                                 )
-                                LogBuffer.logResponse(
-                                    logType = "检查更新",
-                                    username = "检查更新",
-                                    requestBody = "当前版本: $currentVersion",
-                                    success = true,
-                                    responseCode = 200,
-                                    responseMessage = "发现新版本 v$latestVersion",
-                                    responseBody = result.body
-                                )
                             } else {
                                 // 已是最新版本，通过 successMsg 显示提示
                                 updateCheckSuccessMsg = "当前已是最新版本 v$currentVersion"
-                                LogBuffer.logResponse(
-                                    logType = "检查更新",
-                                    username = "检查更新",
-                                    requestBody = "当前版本: $currentVersion",
-                                    success = true,
-                                    responseCode = 200,
-                                    responseMessage = "已是最新版本 v$currentVersion",
-                                    responseBody = result.body
-                                )
                             }
                         } catch (e: java.lang.Exception) {
-                            LogBuffer.logResponse(
-                                logType = "检查更新",
-                                username = "检查更新",
-                                requestBody = "",
-                                success = false,
-                                responseCode = 200,
-                                responseMessage = "解析响应失败",
-                                responseBody = "",
-                                errorMessage = "${e::class.java.simpleName}: ${e.message}"
-                            )
                             updateCheckError = "解析响应失败"
                         }
                     }
                     is ApiResult.RateLimited -> {
                         updateCheckError = "检查更新失败，请稍后再试（可能是VPN被api.github.com拦截，请关闭VPN后再尝试）"
-                        LogBuffer.logResponse(
-                            logType = "检查更新",
-                            username = "检查更新",
-                            requestBody = "",
-                            success = false,
-                            responseCode = 403,
-                            responseMessage = "rate limit exceeded",
-                            responseBody = "",
-                            errorMessage = "RateLimited，（可能是VPN被api.github.com拦截，请关闭VPN后再尝试）"
-                        )
                     }
                     is ApiResult.HttpError -> {
                         updateCheckError = "检查更新失败: HTTP ${result.code}"
-                        LogBuffer.logResponse(
-                            logType = "检查更新",
-                            username = "检查更新",
-                            requestBody = "",
-                            success = false,
-                            responseCode = result.code,
-                            responseMessage = result.message,
-                            responseBody = "",
-                            errorMessage = "HTTP ${result.code} ${result.message}"
-                        )
                     }
                 }
             } finally {
@@ -645,21 +597,21 @@ fun LogScreen(onBack: () -> Unit) {
     var showDeleteAllConfirm by remember { mutableStateOf(false) }
     var showCopiedTip by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
-    var selectedLogType by remember { mutableStateOf<String?>(null) }
+    var selectedLogType by remember { mutableStateOf<String?>("额度查询") }
     // 选中卡片的ID，仅选中卡片允许内部滚动
     var selectedCardId by remember { mutableStateOf<Long?>(null) }
 
     // 每次访问时获取最新日志
     val allLogs = remember(refreshKey) { LogBuffer.getAll() }
-    val logs = if (selectedLogType != null) allLogs.filter { it.logType == selectedLogType } else allLogs
+    val logs = allLogs.filter { it.logType == selectedLogType }
 
     // 获取所有日志类型
     val logTypes = remember(allLogs) { allLogs.map { it.logType }.distinct().sorted() }
 
-    // 如果当前筛选类型已被删除，重置为"全部"
+    // 如果当前筛选类型已被删除，重置为第一个类型
     LaunchedEffect(allLogs, selectedLogType) {
-        if (selectedLogType != null && selectedLogType !in logTypes) {
-            selectedLogType = null
+        if (selectedLogType != null && selectedLogType !in logTypes && logTypes.isNotEmpty()) {
+            selectedLogType = logTypes.first()
         }
     }
 
@@ -681,19 +633,12 @@ fun LogScreen(onBack: () -> Unit) {
                 },
                 actions = {
                     IconButton(onClick = { showDeleteAllConfirm = true }) {
-                        Icon(painter = Icons2.DeleteSweep(), contentDescription = "清空全部")
+                        Icon(painter = Icons2.DeleteSweep(), contentDescription = "清空额度查询日志")
                     }
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { refreshKey++ },
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Icon(painter = Icons2.Refresh(), contentDescription = "刷新")
-            }
-        }
+        floatingActionButton = { }
     ) { padding ->
         Box(
             modifier = Modifier
@@ -706,7 +651,7 @@ fun LogScreen(onBack: () -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        if (selectedLogType != null) "暂无「$selectedLogType」相关日志" else "暂无日志",
+                        "暂无「$selectedLogType」相关日志",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
@@ -721,17 +666,10 @@ fun LogScreen(onBack: () -> Unit) {
                                 .padding(horizontal = 16.dp, vertical = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            FilterChip(
-                                selected = selectedLogType == null,
-                                onClick = { selectedLogType = null },
-                                label = { Text("全部") }
-                            )
                             logTypes.forEach { type ->
                                 FilterChip(
                                     selected = selectedLogType == type,
-                                    onClick = {
-                                        selectedLogType = if (selectedLogType == type) null else type
-                                    },
+                                    onClick = { selectedLogType = type },
                                     label = { Text(type) }
                                 )
                             }
@@ -784,11 +722,12 @@ fun LogScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showDeleteAllConfirm = false },
             title = { Text("确认清空") },
-            text = { Text("确定要清空所有日志吗？此操作不可恢复。") },
+            text = { Text("确定要清空额度查询日志吗？此操作不可恢复。") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        LogBuffer.clear()
+                        LogBuffer.clearByType("额度查询")
+                        refreshKey++
                         showDeleteAllConfirm = false
                     }
                 ) {

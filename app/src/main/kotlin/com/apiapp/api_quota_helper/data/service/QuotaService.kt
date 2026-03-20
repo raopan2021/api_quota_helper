@@ -118,6 +118,11 @@ object LogBuffer {
     /** 清空所有日志 */
     fun clear() = logs.clear()
 
+    /** 清空指定类型的日志 */
+    fun clearByType(logType: String) {
+        logs.removeAll { it.logType == logType }
+    }
+
     /**
      * 将单条日志格式化为可读字符串（用于复制到剪贴板）
      */
