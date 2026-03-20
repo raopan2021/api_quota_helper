@@ -35,6 +35,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string? _selectedLogType = "额度查询";
     [ObservableProperty] private ObservableCollection<string> _logTypes = ["额度查询"];
 
+    // 版本更新
+    [ObservableProperty] private UpdateInfo? _updateInfo;
+    [ObservableProperty] private string? _updateError;
+    [ObservableProperty] private string? _updateSuccessMsg;
+    [ObservableProperty] private bool _isCheckingUpdate;
+
     public MainViewModel()
     {
         _accountService = new AccountService();
@@ -227,8 +233,25 @@ public partial class MainViewModel : ObservableObject
     private void CloseLogs() => ShowLogs = false;
 
     [RelayCommand]
-    private void OpenSettings() => ShowSettings = true;
+    private void OpenSettings()
+    {
+        ShowSettings = true;
+        _ = CheckUpdateAsync();
+    }
 
     [RelayCommand]
     private void CloseSettings() => ShowSettings = false;
+
+    private async Task CheckUpdateAsync()
+    {
+        IsCheckingUpdate = true;
+        UpdateError = null;
+        UpdateSuccessMsg = null;
+        UpdateInfo = null;
+        var (info, err, isLatest) = await _updateService.CheckAsync();
+        if (err != null) UpdateError = err;
+        else if (isLatest) UpdateSuccessMsg = "当前已是最新版本";
+        else UpdateInfo = info;
+        IsCheckingUpdate = false;
+    }
 }

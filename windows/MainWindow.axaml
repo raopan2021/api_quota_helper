@@ -99,7 +99,7 @@
         <StackPanel Spacing="16">
           <Grid><TextBlock Text="设置" FontSize="20" FontWeight="Bold"/><Button Content="✕" Command="{Binding CloseSettingsCommand}" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0"/></Grid>
           <Separator/>
-          <CheckBox Content="深色模式" IsChecked="{Binding IsDarkMode}" Command="{Binding ToggleDarkModeCommand}"/>
+          <ToggleButton Content="深色模式" IsChecked="{Binding IsDarkMode}" Command="{Binding ToggleDarkModeCommand}"/>
           <StackPanel>
             <TextBlock Text="刷新间隔" Margin="0,0,0,8"/>
             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -109,6 +109,22 @@
               <Button Content="10分钟" Command="{Binding UpdateRefreshIntervalCommand}" CommandParameter="600" Padding="8,4"/>
             </StackPanel>
             <TextBlock Text="{Binding RefreshIntervalSec, StringFormat='当前: {0}秒'}" Opacity="0.6" FontSize="12" Margin="0,4,0,0"/>
+          </StackPanel>
+          <Separator/>
+          <!-- 版本更新 -->
+          <StackPanel>
+            <TextBlock Text="版本更新" FontWeight="Bold"/>
+            <Button Content="检查更新" Command="{Binding OpenSettingsCommand}" Margin="0,4,0,0" HorizontalAlignment="Left" Padding="8,4"/>
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsCheckingUpdate}" Margin="0,4,0,0"/>
+            <TextBlock Text="{Binding UpdateError}" Foreground="Red" IsVisible="{Binding UpdateError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" Margin="0,4,0,0"/>
+            <TextBlock Text="{Binding UpdateSuccessMsg}" Foreground="Green" IsVisible="{Binding UpdateSuccessMsg, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,4,0,0"/>
+            <TextBlock IsVisible="{Binding UpdateInfo, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,4,0,0">
+              <TextBlock.Text>
+                <MultiBinding StringFormat="发现新版本: {0}">
+                  <Binding Path="UpdateInfo.Version"/>
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
           </StackPanel>
         </StackPanel>
       </Border>
