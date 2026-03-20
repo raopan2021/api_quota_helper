@@ -139,6 +139,7 @@ fun SettingsScreen(
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var updateCheckError by remember { mutableStateOf<String?>(null) }
+    var updateCheckSuccessMsg by remember { mutableStateOf<String?>(null) }
 
     // 检查更新
     fun checkForUpdate() {
@@ -217,6 +218,8 @@ fun SettingsScreen(
                                     responseBody = result.body
                                 )
                             } else {
+                                // 已是最新版本，通过 successMsg 显示提示
+                                updateCheckSuccessMsg = "当前已是最新版本 v$currentVersion"
                                 LogBuffer.logResponse(
                                     logType = "检查更新",
                                     username = "检查更新",
@@ -281,13 +284,44 @@ fun SettingsScreen(
 
     // 下载并安装
     fun downloadAndInstall(downloadUrl: String) {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
-            context.startActivity(intent)
-        } catch (e: Exception) {
-            // 如果无法直接下载，打开浏览器
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
-            context.startActivity(intent)
+        kotlinx.coroutines.MainScope().launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    val url = URL(downloadUrl)
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.connectTimeout = 30000
+                    conn.readTimeout = 30000
+                    val fileName = downloadUrl.substringAfterLast("/").ifEmpty { "api_quota_helper_update.apk" }
+                    val file = java.io.File(context.getExternalFilesDir(null), fileName)
+                    val input = conn.inputStream
+                    val output = java.io.FileOutputStream(file)
+                    input.copyTo(output)
+                    input.close()
+                    output.close()
+                    conn.disconnect()
+                    file.absolutePath
+                }
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    val apkFile = java.io.File(result)
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        apkFile
+                    )
+                    setDataAndType(uri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                // 下载失败则调浏览器
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
+                    context.startActivity(intent)
+                } catch (e2: Exception) {
+                    // ignore
+                }
+            }
         }
     }
 
@@ -456,6 +490,13 @@ fun SettingsScreen(
                             text = updateCheckError!!,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error
+                        )
+                    } else if (updateCheckSuccessMsg != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = updateCheckSuccessMsg!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
