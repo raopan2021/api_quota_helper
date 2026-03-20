@@ -37,6 +37,19 @@ fun MainScreen(
         }
     }
 
+    // 定时自动刷新（根据设置的刷新间隔）
+    LaunchedEffect(uiState.settings.refreshIntervalSeconds) {
+        val interval = uiState.settings.refreshIntervalSeconds
+        if (interval > 0) {
+            while (true) {
+                delay(interval * 1000L)
+                if (uiState.accounts.isNotEmpty()) {
+                    viewModel.refreshAllQuotas()
+                }
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -351,7 +364,7 @@ fun AccountCard(
                                 )
                                 if (quota != null) {
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    ResetCountdown(resetTime = quota.next_reset_time)
+                                    ResetCountdown(resetTime = quota.next_reset_time, onReset = onRefresh)
                                 }
                             }
                         }
@@ -566,12 +579,22 @@ fun formatRelativeTime(timestamp: Long): String {
 }
 
 @Composable
-fun ResetCountdown(resetTime: String) {
+fun ResetCountdown(resetTime: String, onReset: () -> Unit = {}) {
     var countdown by remember { mutableStateOf("") }
+    var wasReset by remember { mutableStateOf(false) }
 
     LaunchedEffect(resetTime) {
         while (true) {
-            countdown = calculateCountdown(resetTime)
+            val newCountdown = calculateCountdown(resetTime)
+            countdown = newCountdown
+            // 检测到从"未重置"变成"已重置"，触发回调（仅触发一次）
+            if (!wasReset && newCountdown == "已重置") {
+                wasReset = true
+                onReset()
+            }
+            if (newCountdown != "已重置") {
+                wasReset = false
+            }
             delay(1000)
         }
     }
