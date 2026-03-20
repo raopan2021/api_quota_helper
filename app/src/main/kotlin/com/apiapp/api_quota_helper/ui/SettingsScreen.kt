@@ -688,7 +688,7 @@ fun LogScreen(onBack: () -> Unit) {
     var refreshKey by remember { mutableIntStateOf(0) }
     var selectedLogType by remember { mutableStateOf<String?>(null) }
     // 选中卡片的ID，仅选中卡片允许内部滚动
-    var selectedCardId by remember { mutableStateOf<String?>(null) }
+    var selectedCardId by remember { mutableStateOf<Long?>(null) }
 
     // 每次访问时获取最新日志
     val allLogs = remember(refreshKey) { LogBuffer.getAll() }
