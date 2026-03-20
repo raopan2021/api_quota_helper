@@ -300,7 +300,7 @@ fun SettingsScreen(
                         }
                     }
                     is ApiResult.RateLimited -> {
-                        updateCheckError = "请求过于频繁，请稍后再试（GitHub API限流）"
+                        updateCheckError = "检查更新失败，请稍后再试（可能是VPN限流）"
                         LogBuffer.logResponse(
                             logType = "检查更新",
                             username = "检查更新",
@@ -309,7 +309,7 @@ fun SettingsScreen(
                             responseCode = 403,
                             responseMessage = "rate limit exceeded",
                             responseBody = "",
-                            errorMessage = "GitHub API 请求过于频繁，每小时最多60次，请稍后再试"
+                            errorMessage = "检查更新失败，请稍后再试（可能是VPN限流）"
                         )
                     }
                     is ApiResult.HttpError -> {
