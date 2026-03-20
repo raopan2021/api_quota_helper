@@ -209,6 +209,14 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void SelectLogType(string logType)
+    {
+        SelectedLogType = logType;
+        Logs.Clear();
+        foreach (var l in _logService.GetByType(logType)) Logs.Add(new LogEntryVm(l));
+    }
+
+    [RelayCommand]
     private void OpenLogs()
     {
         OnLogAdded();
