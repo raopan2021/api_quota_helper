@@ -14,7 +14,7 @@ android {
         applicationId = "com.apiapp.api_quota_helper"
         minSdk = 26
         targetSdk = 35
-        versionCode = 47
+        versionCode = 52
         versionName = "1.0.52"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
