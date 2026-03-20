@@ -1,0 +1,119 @@
+name: Multi-Platform Release
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  JAVA_VERSION: '17'
+
+jobs:
+  # ============ Android ============
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+
+      - name: Build Android Release APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew app:assembleRelease --no-daemon --no-build-cache
+
+      - name: Extract version
+        id: extract-version
+        run: |
+          VERSION=$(grep 'val ver =' android/app/build.gradle.kts | sed 's/val ver = "//;s/"//')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION"
+
+      - name: Check if tag exists
+        id: check-tag
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}"; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "Tag v${VERSION} already exists, skipping release"
+          else
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload artifact
+        if: steps.check-tag.outputs.should_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk-${{ steps.extract-version.outputs.VERSION }}
+          path: android/app/build/outputs/apk/release/api-quota-helper-${{ steps.extract-version.outputs.VERSION }}.apk
+
+      - name: Create Release
+        if: steps.check-tag.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          files: android/app/build/outputs/apk/release/api-quota-helper-${{ steps.extract-version.outputs.VERSION }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============ Windows ============
+  windows-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish Windows Release
+        run: |
+          cd windows
+          dotnet publish -c Release -r win-x64 --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:PublishTrimmed=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -o ./publish
+
+      - name: Extract version
+        id: extract-version
+        run: |
+          VERSION=$(grep '<Version>' windows/ApiQuotaHelper.csproj | sed 's/.*<Version>//;s/<\/Version>//')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION"
+
+      - name: Check if tag exists
+        id: check-tag
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/v${VERSION}"; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "Tag v${VERSION} already exists, skipping release"
+          else
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload artifact
+        if: steps.check-tag.outputs.should_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-${{ steps.extract-version.outputs.VERSION }}
+          path: windows/publish/ApiQuotaHelper.exe
+
+      - name: Create Release
+        if: steps.check-tag.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: false
+          prerelease: false
+          files: windows/publish/ApiQuotaHelper.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

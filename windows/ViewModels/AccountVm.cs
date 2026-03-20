@@ -16,6 +16,8 @@ public partial class AccountVm : ObservableObject, IDisposable
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private string _countdown = "";
 
+    public Action? ResetCallback { get; set; }
+
     public double RemainingPercent => Quota != null && Quota.Amount > 0 ? (Quota.AmountUsed / Quota.Amount * 100) : 0;
 
     public AccountVm(Account account)
@@ -37,12 +39,19 @@ public partial class AccountVm : ObservableObject, IDisposable
     {
         _timer?.Dispose();
         if (string.IsNullOrEmpty(Quota?.NextResetTime)) return;
+        var wasReset = false;
         _timer = new System.Timers.Timer(1000);
         _timer.Elapsed += (_, _) =>
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
                 Countdown = CalculateCountdown(Quota!.NextResetTime);
+                if (!wasReset && Countdown == "已重置")
+                {
+                    wasReset = true;
+                    ResetCallback?.Invoke();
+                }
+                if (Countdown != "已重置") wasReset = false;
             });
         };
         _timer.Start();

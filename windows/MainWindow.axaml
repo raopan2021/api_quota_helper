@@ -33,7 +33,13 @@
               <Border Background="#F8F8F8" CornerRadius="8" Padding="16" Margin="0,0,0,12">
                 <StackPanel>
                   <TextBlock Text="{Binding Account.Username}" FontWeight="Bold" FontSize="16"/>
-                  <TextBlock Text="••••••••" Opacity="0.5" FontSize="12" Margin="0,2,0,0"/>
+                  <Grid>
+                      <TextBlock Text="••••••••" Opacity="0.5" FontSize="12" Margin="0,2,0,0" VerticalAlignment="Center"/>
+                      <Button Content="复制" HorizontalAlignment="Right"
+                              Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).CopyTokenCommand}"
+                              CommandParameter="{Binding}"
+                              Background="Transparent" BorderThickness="0" Padding="4,0" FontSize="11" Opacity="0.6"/>
+                    </Grid>
                   <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Margin="0,8,0,0"/>
                   <TextBlock Text="{Binding Error}" Foreground="Red" IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,8,0,0" TextWrapping="Wrap"/>
                   <StackPanel IsVisible="{Binding Quota, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,8,0,0">
@@ -44,6 +50,7 @@
                       <TextBlock Text="{Binding Quota.Remaining, StringFormat='剩余: {0:F1}'}" FontSize="12" HorizontalAlignment="Right" Opacity="0.7"/>
                     </Grid>
                     <TextBlock Text="{Binding Quota.NextResetTime, StringFormat='重置时间: {0}'}" FontSize="12" Opacity="0.7" Margin="0,2,0,0" IsVisible="{Binding Quota.NextResetTime, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <TextBlock Text="{Binding Countdown, StringFormat='距重置: {0}'}" FontSize="12" Foreground="#1976D2" Margin="0,2,0,0" IsVisible="{Binding Countdown, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                       <Button Content="刷新" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).RefreshOneCommand}" CommandParameter="{Binding}" Padding="8,4" Margin="0,0,8,0"/>
                       <Button Content="编辑" Command="{Binding $parent[Window].((vm:MainViewModel)DataContext).ShowEditCommand}" CommandParameter="{Binding}" Padding="8,4" Margin="0,0,8,0"/>

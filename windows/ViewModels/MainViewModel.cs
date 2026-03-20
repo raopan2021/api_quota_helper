@@ -19,7 +19,6 @@ public partial class MainViewModel : ObservableObject
     private readonly SettingsService _settingsService;
     private readonly UpdateService _updateService;
     private System.Timers.Timer? _refreshTimer;
-    private System.Timers.Timer? _resetTimer;
 
     [ObservableProperty] private ObservableCollection<AccountVm> _accounts = [];
     [ObservableProperty] private bool _isLoading;
@@ -68,6 +67,8 @@ public partial class MainViewModel : ObservableObject
         foreach (var acc in accounts)
         {
             var vm = new AccountVm(acc);
+            var captured = vm;
+            vm.ResetCallback = async () => { await RefreshOneAsync(captured); };
             Accounts.Add(vm);
         }
         IsLoading = false;
@@ -145,6 +146,8 @@ public partial class MainViewModel : ObservableObject
         if (EditingAccount == null)
         {
             var vm = new AccountVm(account);
+            var captured = vm;
+            vm.ResetCallback = async () => { await RefreshOneAsync(captured); };
             Accounts.Add(vm);
         }
         else
@@ -247,6 +250,21 @@ public partial class MainViewModel : ObservableObject
     {
         _logService.ClearByType("额度查询");
         OnLogAdded();
+    }
+
+    [RelayCommand]
+    private async Task CopyTokenAsync(AccountVm acc)
+    {
+        try
+        {
+            var topLevel = TopLevel.GetTopLevel((App.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow);
+            if (topLevel == null) return;
+            await topLevel.Clipboard.SetTextAsync(acc.Account.Token);
+            StatusText = "Token已复制";
+            await Task.Delay(2000);
+            if (StatusText == "Token已复制") StatusText = "";
+        }
+        catch { }
     }
 
     [RelayCommand]
