@@ -548,6 +548,13 @@ fun LogScreen(onBack: () -> Unit) {
     // 获取所有日志类型
     val logTypes = remember(allLogs) { allLogs.map { it.logType }.distinct().sorted() }
 
+    // 如果当前筛选类型已被删除，重置为"全部"
+    LaunchedEffect(allLogs, selectedLogType) {
+        if (selectedLogType != null && selectedLogType !in logTypes) {
+            selectedLogType = null
+        }
+    }
+
     LaunchedEffect(showCopiedTip) {
         if (showCopiedTip) {
             kotlinx.coroutines.delay(1500)
