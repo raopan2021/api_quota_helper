@@ -110,7 +110,7 @@ class MainViewModel(
                 return false
             }
             others.any { it.account.token == trimmedToken } -> {
-                _uiState.update { it.copy(saveError = "Token 已存在（不可重复添加同一账户）") }
+                _uiState.update { it.copy(saveError = "Token 已存在") }
                 return false
             }
         }
