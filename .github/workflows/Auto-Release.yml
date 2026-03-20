@@ -77,6 +77,9 @@ jobs:
           java-version: '17'
 
       - uses: gradle/actions/setup-gradle@v5
+        with:
+          # 禁用 Gradle 缓存，确保每次都重新编译最新代码
+          cache-dependency-substitution: false
 
       - name: 配置签名信息
         run: |
@@ -94,7 +97,8 @@ jobs:
       - name: 构建 release APK
         run: |
           chmod 777 ./gradlew
-          ./gradlew app:assembleRelease
+          # --no-build-cache 禁用本地构建缓存，确保全新编译
+          ./gradlew app:assembleRelease --no-build-cache
           echo "构建完成"
 
       # 只有需要发布时才上传 artifact
