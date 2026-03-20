@@ -15,7 +15,7 @@ android {
         minSdk = 26
         targetSdk = 35
         // versionName为唯一数据源，versionCode自动计算
-        val ver = "1.0.60"
+        val ver = "1.0.63"
         versionCode = ver.split(".")[2].toInt()
         versionName = ver
 

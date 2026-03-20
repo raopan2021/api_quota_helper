@@ -42,80 +42,19 @@ private sealed class ApiResult {
 // 手写JSON格式化（不用org.json避免崩溃）
 private fun formatJson(jsonString: String): String {
     if (jsonString.isEmpty()) return jsonString
-    val result = StringBuilder()
-    var indent = 0
-    var inString = false
-    var escape = false
-    var prevWasClose = false
-
-    for (char in jsonString) {
-        when {
-            escape -> {
-                result.append(char)
-                escape = false
-                prevWasClose = false
-            }
-            char == '\\' -> {
-                result.append(char)
-                escape = true
-            }
-            inString -> {
-                result.append(char)
-                if (char == '"' && !escape) {
-                    inString = false
-                    prevWasClose = false
-                }
-            }
-            char == '"' -> {
-                result.append(char)
-                inString = true
-                prevWasClose = false
-            }
-            char == '{' || char == '[' -> {
-                if (!prevWasClose) {
-                    result.append('\n')
-                    result.append("  ".repeat(indent))
-                }
-                result.append(char)
-                indent++
-                prevWasClose = false
-            }
-            char == '}' || char == ']' -> {
-                indent--
-                if (prevWasClose) {
-                    // 连续闭合不换行
-                } else {
-                    result.append('\n')
-                    result.append("  ".repeat(indent))
-                }
-                result.append(char)
-                prevWasClose = true
-            }
-            char == ':' -> {
-                result.append(char)
-                result.append(' ')
-                prevWasClose = false
-            }
-            char == ',' -> {
-                result.append(char)
-                result.append('\n')
-                result.append("  ".repeat(indent))
-                prevWasClose = false
-            }
-            char == ' ' -> {
-                // 跳过多余空格
-            }
-            else -> {
-                if (prevWasClose) {
-                    result.append('\n')
-                    result.append("  ".repeat(indent))
-                }
-                result.append(char)
-                prevWasClose = false
-            }
+    return try {
+        val json = JSONObject(jsonString)
+        json.toString(2) // 2空格缩进
+    } catch (e: Exception) {
+        // 尝试作为数组解析
+        try {
+            val json = JSONArray(jsonString)
+            json.toString(2)
+        } catch (e: Exception) {
+            // 无法解析，返回原始字符串
+            jsonString
         }
     }
-    return result.toString().trim()
 }
 
 data class UpdateInfo(
