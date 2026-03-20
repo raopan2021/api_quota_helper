@@ -258,6 +258,12 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ToggleLogExpanded(LogEntryVm log)
+    {
+        log.ToggleExpanded();
+    }
+
+    [RelayCommand]
     private void OpenLogs()
     {
         OnLogAdded();

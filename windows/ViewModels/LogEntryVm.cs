@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace ApiQuotaHelper.ViewModels;
 
-public class LogEntryVm
+public partial class LogEntryVm : ObservableObject
 {
     public long Id { get; }
     public string Time { get; }
@@ -15,6 +15,10 @@ public class LogEntryVm
     public string ResponseMessage { get; }
     public string ResponseBody { get; }
     public string? ErrorMessage { get; }
+
+    [ObservableProperty] private bool _isExpanded;
+
+    public void ToggleExpanded() => IsExpanded = !IsExpanded;
 
     public LogEntryVm(LogEntry entry)
     {
