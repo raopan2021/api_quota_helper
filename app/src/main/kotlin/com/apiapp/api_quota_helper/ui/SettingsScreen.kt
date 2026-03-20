@@ -300,7 +300,7 @@ fun SettingsScreen(
                         }
                     }
                     is ApiResult.RateLimited -> {
-                        updateCheckError = "检查更新失败，请稍后再试（可能是VPN限流）"
+                        updateCheckError = "检查更新失败，请稍后再试（可能是VPN限流），请关闭VPN后再尝试"
                         LogBuffer.logResponse(
                             logType = "检查更新",
                             username = "检查更新",
@@ -309,7 +309,7 @@ fun SettingsScreen(
                             responseCode = 403,
                             responseMessage = "rate limit exceeded",
                             responseBody = "",
-                            errorMessage = "检查更新失败，请稍后再试（可能是VPN限流）"
+                            errorMessage = "${e::class.java.simpleName}: ${e.message}，请关闭VPN后再尝试"
                         )
                     }
                     is ApiResult.HttpError -> {
