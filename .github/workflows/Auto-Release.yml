@@ -34,6 +34,8 @@ jobs:
       should_release: ${{ steps.check.outputs.should_release }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - id: check
         run: |
           TAG="${{ needs.extract-version.outputs.tag }}"
@@ -52,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-java@v5
         with:
@@ -89,7 +91,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ github.sha }}
+          fetch-depth: 0
       - name: 创建 tag
         run: |
           git config user.name "github-actions[bot]"
