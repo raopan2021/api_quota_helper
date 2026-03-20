@@ -6,6 +6,9 @@ on:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   # 从build.gradle.kts提取versionName
   extract-version:
@@ -23,7 +26,7 @@ jobs:
           echo "version=$VER" >> $GITHUB_OUTPUT
           echo "tag=v$VER" >> $GITHUB_OUTPUT
 
-  # 检查tag是否存在，不存在则创建
+  # 检查tag是否存在
   check-tag:
     needs: extract-version
     runs-on: ubuntu-latest
@@ -42,29 +45,20 @@ jobs:
             echo "should_release=true" >> $GITHUB_OUTPUT
           fi
 
-  # 创建tag
-  create-tag:
+  # 构建（tag不存在时也构建，但不发布release）
+  build:
     needs: [extract-version, check-tag]
     runs-on: ubuntu-latest
-    if: needs.check-tag.outputs.should_release == 'true'
-    steps:
-      - uses: actions/checkout@v5
-      - name: 创建 tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "${{ needs.extract-version.outputs.tag }}"
-          git push origin "${{ needs.extract-version.outputs.tag }}"
-
-  # 构建
-  build:
-    needs: [extract-version, check-tag, create-tag]
-    runs-on: ubuntu-latest
-    if: needs.check-tag.outputs.should_release == 'true'
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.extract-version.outputs.tag }}
+          # 如果tag不存在，checkout master
+          sparse-checkout: |
+            app/build.gradle.kts
+            app/src
+            gradle
+            .github
 
       - uses: actions/setup-java@v5
         with:
@@ -88,22 +82,30 @@ jobs:
           ./gradlew app:assembleRelease
 
       - uses: actions/upload-artifact@v4
+        if: needs.check-tag.outputs.should_release == 'true'
         with:
           name: release-apk-${{ needs.extract-version.outputs.version }}
           path: app/build/outputs/apk/release
+
+  # 创建tag（仅当需要发布时）
+  create-tag:
+    needs: [extract-version, check-tag]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.should_release == 'true'
+    steps:
+      - name: 创建 tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ needs.extract-version.outputs.tag }}"
+          git push origin "${{ needs.extract-version.outputs.tag }}"
 
   # 发布release
   release:
     needs: [extract-version, check-tag, create-tag, build]
     runs-on: ubuntu-latest
     if: needs.check-tag.outputs.should_release == 'true'
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.extract-version.outputs.tag }}
-
       - uses: actions/download-artifact@v4
         with:
           name: release-apk-${{ needs.extract-version.outputs.version }}
