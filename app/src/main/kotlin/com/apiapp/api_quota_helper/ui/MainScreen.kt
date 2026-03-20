@@ -502,6 +502,7 @@ fun AddEditAccountDialog(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("识别")
                     }
+                }
                 // 识别结果错误提示
                 if (saveError != null) {
                     Card(
@@ -515,7 +516,7 @@ fun AddEditAccountDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                Icons.Default.Warning,
+                                painter = Icons2.Warning(),
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp)
