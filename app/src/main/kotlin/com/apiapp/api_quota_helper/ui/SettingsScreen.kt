@@ -83,7 +83,7 @@ private fun formatJson(jsonString: String): String {
             char == '}' || char == ']' -> {
                 indent--
                 if (prevWasClose) {
-                    // Don't add newline before consecutive closes
+                    // 连续闭合不换行
                 } else {
                     result.append('\n')
                     result.append("  ".repeat(indent))
@@ -103,7 +103,7 @@ private fun formatJson(jsonString: String): String {
                 prevWasClose = false
             }
             char == ' ' -> {
-                // skip extra spaces
+                // 跳过多余空格
             }
             else -> {
                 if (prevWasClose) {
@@ -374,7 +374,7 @@ fun SettingsScreen(
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl))
                     context.startActivity(intent)
                 } catch (e2: Exception) {
-                    // ignore
+                    // 忽略
                 }
             }
         }
