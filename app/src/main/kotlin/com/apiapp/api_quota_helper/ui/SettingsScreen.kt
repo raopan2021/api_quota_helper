@@ -239,7 +239,7 @@ fun SettingsScreen(
                         }
                     }
                     is ApiResult.RateLimited -> {
-                        updateCheckError = "检查更新失败，请稍后再试（可能是VPN限流），请关闭VPN后再尝试"
+                        updateCheckError = "检查更新失败，请稍后再试（可能是VPN被api.github.com拦截，请关闭VPN后再尝试）"
                         LogBuffer.logResponse(
                             logType = "检查更新",
                             username = "检查更新",
@@ -248,7 +248,7 @@ fun SettingsScreen(
                             responseCode = 403,
                             responseMessage = "rate limit exceeded",
                             responseBody = "",
-                            errorMessage = "RateLimited，请关闭VPN后再尝试"
+                            errorMessage = "RateLimited，（可能是VPN被api.github.com拦截，请关闭VPN后再尝试）"
                         )
                     }
                     is ApiResult.HttpError -> {
