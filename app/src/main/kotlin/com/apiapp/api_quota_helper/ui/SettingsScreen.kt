@@ -329,7 +329,7 @@ fun SettingsScreen(
                 title = { Text("设置") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painter = Icons2.ArrowBack, contentDescription = "返回")
+                        Icon(painter = Icons2.ArrowBack(), contentDescription = "返回")
                     }
                 }
             )
@@ -356,7 +356,7 @@ fun SettingsScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        painter = if (settings.darkMode) Icons2.DarkMode else Icons2.LightMode,
+                        painter = if (settings.darkMode) Icons2.DarkMode() else Icons2.LightMode(),
                         contentDescription = null
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -409,7 +409,7 @@ fun SettingsScreen(
                 onClick = onShowLogs,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(painter = Icons2.Terminal, contentDescription = null)
+                Icon(painter = Icons2.Terminal(), contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("查看日志")
             }
@@ -462,7 +462,7 @@ fun SettingsScreen(
                                     Button(
                                         onClick = { downloadAndInstall(updateInfo!!.downloadUrl) }
                                     ) {
-                                        Icon(painter = Icons2.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(painter = Icons2.OpenInNew(), contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text("打开下载页")
                                     }
@@ -508,7 +508,7 @@ fun SettingsScreen(
                             if (isCheckingUpdate) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
-                                Icon(painter = Icons2.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(painter = Icons2.Refresh(), contentDescription = null, modifier = Modifier.size(18.dp))
                             }
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(if (isCheckingUpdate) "检查中..." else "检查更新")
@@ -519,7 +519,7 @@ fun SettingsScreen(
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases")))
                             }
                         ) {
-                            Icon(painter = Icons2.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(painter = Icons2.OpenInNew(), contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("下载更新")
                         }
@@ -561,12 +561,12 @@ fun LogScreen(onBack: () -> Unit) {
                 title = { Text("网络日志") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(painter = Icons2.ArrowBack, contentDescription = "返回")
+                        Icon(painter = Icons2.ArrowBack(), contentDescription = "返回")
                     }
                 },
                 actions = {
                     IconButton(onClick = { showDeleteAllConfirm = true }) {
-                        Icon(painter = Icons2.DeleteSweep, contentDescription = "清空全部")
+                        Icon(painter = Icons2.DeleteSweep(), contentDescription = "清空全部")
                     }
                 }
             )
@@ -576,7 +576,7 @@ fun LogScreen(onBack: () -> Unit) {
                 onClick = { refreshKey++ },
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Icon(painter = Icons2.Refresh, contentDescription = "刷新")
+                Icon(painter = Icons2.Refresh(), contentDescription = "刷新")
             }
         }
     ) { padding ->
@@ -607,7 +607,7 @@ fun LogScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(painter = Icons2.TouchApp,
+                            Icon(painter = Icons2.TouchApp()
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -734,7 +734,7 @@ fun SwipeToDeleteCard(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(painter = Icons2.Delete,
+                Icon(painter = Icons2.Delete()
                     contentDescription = "删除",
                     tint = Color(0xFFF44336)
                 )
@@ -778,7 +778,7 @@ fun LogEntryCardContent(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
-                    painter = if (entry.success) Icons2.CheckCircle else Icons2.Error,
+                    painter = if (entry.success) Icons2.CheckCircle() else Icons2.Error(),
                     contentDescription = null,
                     tint = accentColor,
                     modifier = Modifier.size(16.dp)
@@ -794,7 +794,7 @@ fun LogEntryCardContent(
                     onClick = onCopy,
                     modifier = Modifier.size(28.dp)
                 ) {
-                    Icon(painter = Icons2.ContentCopy,
+                    Icon(painter = Icons2.ContentCopy()
                         contentDescription = "复制",
                         modifier = Modifier.size(16.dp)
                     )
@@ -805,7 +805,7 @@ fun LogEntryCardContent(
 
             // 用户名
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(painter = Icons2.Person,
+                Icon(painter = Icons2.Person()
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -822,7 +822,7 @@ fun LogEntryCardContent(
             if (entry.requestBody.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(painter = Icons2.Upload,
+                    Icon(painter = Icons2.Upload()
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -846,7 +846,7 @@ fun LogEntryCardContent(
             // 响应码和消息
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(painter = Icons2.Code,
+                Icon(painter = Icons2.Code()
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
