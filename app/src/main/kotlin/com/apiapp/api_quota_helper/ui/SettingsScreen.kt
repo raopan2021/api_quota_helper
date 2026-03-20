@@ -1,5 +1,19 @@
 package com.apiapp.api_quota_helper.ui
 
+/**
+ * 设置页面与日志页面
+ *
+ * 包含功能：
+ * - 设置页面（SettingsScreen）：深色模式、刷新间隔、检查更新、关于
+ * - 日志页面（LogScreen）：查看网络请求日志，支持滑动删除
+ * - 检查更新卡片（CheckUpdateCard）：独立卡片，支持前往GitHub下载
+ *
+ * 主要组件：
+ * - PickerColumn：时分秒滚动选择器
+ * - SwipeToDeleteCard：支持滑动删除的卡片
+ * - LogEntryCardContent：日志卡片内容
+ */
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -33,6 +47,12 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * API 查询结果密封类
+ * - Success：请求成功，包含响应体
+ * - HttpError：HTTP错误，包含状态码和消息
+ * - RateLimited：请求被限流（VPN可能导致）
+ */
 private sealed class ApiResult {
     data class Success(val body: String) : ApiResult()
     data class HttpError(val code: Int, val message: String) : ApiResult()

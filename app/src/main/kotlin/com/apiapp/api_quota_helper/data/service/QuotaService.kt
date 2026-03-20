@@ -15,10 +15,30 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.ConcurrentLinkedQueue
 
+/**
+ * 日志缓冲区
+ * 存储最近的日志条目，用于在日志页面展示
+ * 最多存储50条，超出后自动删除最旧的
+ */
 object LogBuffer {
+    /** 日志队列 */
     private val logs = ConcurrentLinkedQueue<LogEntry>()
+    /** 最大日志数量 */
     private const val maxSize = 50
-    
+
+    /**
+     * 日志条目
+     * @param id 唯一ID（时间戳）
+     * @param time 格式化的时间字符串（HH:mm:ss）
+     * @param success 是否成功
+     * @param logType 日志类型（如"额度查询"、"账户识别"）
+     * @param username 关联的用户名
+     * @param requestBody 请求体（JSON字符串）
+     * @param responseCode HTTP响应码
+     * @param responseMessage HTTP响应消息
+     * @param responseBody 响应体（JSON字符串）
+     * @param errorMessage 错误信息（如果有）
+     */
     data class LogEntry(
         val id: Long = System.currentTimeMillis(),
         val time: String,
@@ -31,14 +51,21 @@ object LogBuffer {
         val responseBody: String,
         val errorMessage: String? = null
     )
-    
+
+    /**
+     * 添加日志条目
+     * 超出最大数量时自动删除最旧的
+     */
     fun add(entry: LogEntry) {
         logs.offer(entry)
         while (logs.size > maxSize) {
             logs.poll()
         }
     }
-    
+
+    /**
+     * 记录请求开始（用于显示"请求中..."状态）
+     */
     fun logRequest(logType: String, username: String, requestBody: String) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         add(LogEntry(
@@ -53,7 +80,19 @@ object LogBuffer {
         ))
     }
 
-    fun logResponse(logType: String, username: String, requestBody: String, success: Boolean, responseCode: Int, responseMessage: String, responseBody: String, errorMessage: String? = null) {
+    /**
+     * 记录请求响应
+     */
+    fun logResponse(
+        logType: String,
+        username: String,
+        requestBody: String,
+        success: Boolean,
+        responseCode: Int,
+        responseMessage: String,
+        responseBody: String,
+        errorMessage: String? = null
+    ) {
         val time = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         add(LogEntry(
             time = time,
@@ -67,23 +106,31 @@ object LogBuffer {
             errorMessage = errorMessage
         ))
     }
-    
+
+    /** 获取所有日志（按时间倒序） */
     fun getAll(): List<LogEntry> = logs.toList().reversed()
-    
+
+    /** 删除指定ID的日志 */
     fun delete(id: Long) {
         logs.removeAll { it.id == id }
     }
-    
+
+    /** 清空所有日志 */
     fun clear() = logs.clear()
-    
+
+    /**
+     * 将单条日志格式化为可读字符串（用于复制到剪贴板）
+     */
     fun getAsString(entry: LogEntry): String = if (entry.success) {
         "[${entry.time}] [${entry.logType}] ✅ ${entry.username}\n请求:\n${entry.requestBody}\n响应:\n${formatJsonForCopy(entry.responseBody)}"
     } else {
         "[${entry.time}] [${entry.logType}] ❌ ${entry.username}\n请求:\n${entry.requestBody}\n错误: ${entry.errorMessage ?: entry.responseBody}"
     }
-    
+
+    /** 将所有日志合并为一个字符串 */
     fun getAllAsString(): String = getAll().joinToString("\n---\n") { getAsString(it) }
-    
+
+    /** 格式化JSON用于复制（2空格缩进） */
     private fun formatJsonForCopy(jsonString: String): String {
         return try {
             JSONObject(jsonString).toString(2)
@@ -93,10 +140,20 @@ object LogBuffer {
     }
 }
 
+/**
+ * 额度查询服务
+ * 负责与API服务器通信，查询账户额度
+ * 包含重试机制（最多3次）
+ */
 class QuotaService() {
-
     private val TAG = "QuotaService"
 
+    /**
+     * 查询账户额度
+     * @param account 要查询的账户
+     * @return Result<QuotaData> 查询结果
+     * @implNote 最多重试3次，每次失败后等待1秒再重试
+     */
     suspend fun queryQuota(account: UserAccount): Result<QuotaData> = withContext(Dispatchers.IO) {
         var lastException: Exception? = null
 
@@ -115,13 +172,15 @@ class QuotaService() {
                 connection.requestMethod = "POST"
                 connection.doOutput = true
                 connection.doInput = true
-                connection.connectTimeout = 15000
-                connection.readTimeout = 30000
+                connection.connectTimeout = 15000  // 15秒连接超时
+                connection.readTimeout = 30000      // 30秒读取超时
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.setRequestProperty("Accept", "application/json")
 
+                // 记录请求日志
                 LogBuffer.logRequest("额度查询", account.username, jsonBody)
 
+                // 发送请求
                 OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
                     writer.write(jsonBody)
                     writer.flush()
@@ -184,6 +243,7 @@ class QuotaService() {
                 val data = jsonObject.optJSONObject("data")
                     ?: return@withContext Result.failure(Exception("数据为空"))
 
+                // 解析额度数据
                 val quotaData = QuotaData(
                     subscription_id = data.optInt("subscription_id", 0),
                     plan_name = data.optString("plan_name", ""),
@@ -197,17 +257,19 @@ class QuotaService() {
 
                 return@withContext Result.success(quotaData)
             } catch (e: Exception) {
+                // 记录异常日志
                 LogBuffer.logResponse("额度查询", account.username, jsonBody, false, 0, "", "", e.message)
                 lastException = e
-                
+
                 if (attempt < 2) {
                     kotlinx.coroutines.delay(1000) // 1秒后重试
                 }
             }
         }
-        
+
         Result.failure(lastException ?: Exception("请求失败"))
     }
 
+    /** 生成唯一的账户ID（UUID） */
     fun generateAccountId(): String = java.util.UUID.randomUUID().toString()
 }
