@@ -687,6 +687,8 @@ fun LogScreen(onBack: () -> Unit) {
     var showCopiedTip by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableIntStateOf(0) }
     var selectedLogType by remember { mutableStateOf<String?>(null) }
+    // 选中卡片的ID，仅选中卡片允许内部滚动
+    var selectedCardId by remember { mutableStateOf<String?>(null) }
 
     // 每次访问时获取最新日志
     val allLogs = remember(refreshKey) { LogBuffer.getAll() }
@@ -752,29 +754,6 @@ fun LogScreen(onBack: () -> Unit) {
                 }
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // 左滑删除提示
-                    if (logs.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(painter = Icons2.TouchApp(),
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "左滑可删除",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                        }
-                    }
-
                     // 分类筛选
                     if (logTypes.isNotEmpty()) {
                         Row(
@@ -808,6 +787,11 @@ fun LogScreen(onBack: () -> Unit) {
                         items(logs, key = { it.id }) { entry ->
                             SwipeToDeleteCard(
                                 entry = entry,
+                                isSelected = entry.id == selectedCardId,
+                                onSelect = {
+                                    // 选中切换：点击已选中的卡片则取消选中
+                                    selectedCardId = if (selectedCardId == entry.id) null else entry.id
+                                },
                                 onCopy = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("log", LogBuffer.getAsString(entry)))
@@ -816,6 +800,7 @@ fun LogScreen(onBack: () -> Unit) {
                                 onDelete = {
                                     LogBuffer.delete(entry.id)
                                     refreshKey++
+                                    selectedCardId = null
                                 }
                             )
                         }
@@ -864,6 +849,8 @@ fun LogScreen(onBack: () -> Unit) {
 @Composable
 fun SwipeToDeleteCard(
     entry: LogBuffer.LogEntry,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
     onCopy: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -897,6 +884,8 @@ fun SwipeToDeleteCard(
         content = {
             LogEntryCardContent(
                 entry = entry,
+                isSelected = isSelected,
+                onSelect = onSelect,
                 onCopy = onCopy,
                 onDelete = onDelete
             )
@@ -907,9 +896,12 @@ fun SwipeToDeleteCard(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogEntryCardContent(
     entry: LogBuffer.LogEntry,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
     onCopy: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -922,15 +914,16 @@ fun LogEntryCardContent(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor)
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        onClick = onSelect
     ) {
-        // 内部滚动容器
+        // 内部滚动容器（仅选中时启用）
         Column(
             modifier = Modifier
                 .padding(8.dp)
                 .fillMaxWidth()
-                .heightIn(max = 100.dp) // 最大高度100dp，超出部分滚动
-                .verticalScroll(rememberScrollState())
+                .heightIn(max = 150.dp) // 最大高度150dp，超出部分滚动
+                .verticalScroll(rememberScrollState(), enabled = isSelected)
         ) {
             // 顶部栏：状态图标 + 时间 + 删除按钮（右上角）
             Row(
@@ -958,6 +951,17 @@ fun LogEntryCardContent(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    // 复制按钮（第一行日期后面）
+                    IconButton(
+                        onClick = onCopy,
+                        modifier = Modifier.size(22.dp)
+                    ) {
+                        Icon(painter = Icons2.ContentCopy(),
+                            contentDescription = "复制",
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
                 // 删除按钮（右上角）
                 IconButton(
@@ -975,7 +979,7 @@ fun LogEntryCardContent(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // 用户名 + 复制
+            // 用户名
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -991,16 +995,6 @@ fun LogEntryCardContent(
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                IconButton(
-                    onClick = onCopy,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(painter = Icons2.ContentCopy(),
-                                contentDescription = "复制",
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
             }
 
             // 请求体
