@@ -10,69 +10,94 @@ env:
   JAVA_VERSION: '17'
 
 jobs:
-  windows-release:
+  # 并行构建三个平台
+  windows:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
       - name: Publish Windows
         run: |
           cd windows
           dotnet publish -c Release -r win-x64 --self-contained true \
-            -p:PublishSingleFile=true \
-            -p:PublishTrimmed=true \
+            -p:PublishSingleFile=true -p:PublishTrimmed=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -o ./publish
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: windows/publish/ApiQuotaHelper.exe
 
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish Linux
+        run: |
+          cd windows
+          dotnet publish -c Release -r linux-x64 --self-contained true \
+            -p:PublishSingleFile=true -p:PublishTrimmed=true \
+            -o ./publish-linux
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binary
+          path: windows/publish-linux/ApiQuotaHelper
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+      - name: Build Android
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew app:assembleRelease --no-daemon --no-build-cache
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: android/app/build/outputs/apk/release/api-quota-helper-*.apk
+
+  # 汇总发布（等所有构建完成）
+  release:
+    needs: [windows, linux, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
       - name: Extract version
         id: extract-version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create v${{ steps.extract-version.outputs.VERSION }} \
             --title "v${{ steps.extract-version.outputs.VERSION }}" \
-            --notes "API Quota Helper Windows版 v${{ steps.extract-version.outputs.VERSION }}" \
-            windows/publish/ApiQuotaHelper.exe
+            --notes "API Quota Helper 多平台版 v${{ steps.extract-version.outputs.VERSION }}
 
-  android-release:
-    needs: windows-release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: 'temurin'
-
-      - name: Build Android
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew app:assembleRelease --no-daemon --no-build-cache
-
-      - name: Extract version
-        id: extract-version
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Upload to Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd android
-          gh release upload v${{ steps.extract-version.outputs.VERSION }} \
-            app/build/outputs/apk/release/api-quota-helper-${{ steps.extract-version.outputs.VERSION }}.apk \
-            --clobber
+- Windows: ApiQuotaHelper.exe
+- Linux: ApiQuotaHelper
+- Android: api-quota-helper-v${{ steps.extract-version.outputs.VERSION }}.apk" \
+            ./artifacts/windows-exe/ApiQuotaHelper.exe \
+            ./artifacts/linux-binary/ApiQuotaHelper \
+            "./artifacts/android-apk/api-quota-helper-*.apk"
