@@ -1,0 +1,121 @@
+name: Release Build
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  # 从build.gradle.kts提取versionName
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      tag: ${{ steps.extract.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: extract
+        run: |
+          VER=$(grep 'val ver = ' app/build.gradle.kts | sed 's/.*val ver = "//;s/".*//')
+          echo "version=$VER"
+          echo "tag=v$VER"
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "tag=v$VER" >> $GITHUB_OUTPUT
+
+  # 检查tag是否存在，不存在则创建
+  check-tag:
+    needs: extract-version
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: check
+        run: |
+          TAG="${{ needs.extract-version.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping release"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "Tag $TAG does not exist, will create it"
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          fi
+
+  # 创建tag
+  create-tag:
+    needs: [extract-version, check-tag]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.should_release == 'true'
+    steps:
+      - uses: actions/checkout@v5
+      - name: 创建 tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ needs.extract-version.outputs.tag }}"
+          git push origin "${{ needs.extract-version.outputs.tag }}"
+
+  # 构建
+  build:
+    needs: [extract-version, check-tag, create-tag]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.should_release == 'true'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.extract-version.outputs.tag }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: 配置签名信息
+        run: |
+          if [ -n "${{ secrets.KEY_STORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEY_STORE_BASE64 }}" | base64 --decode > app/api_quota_helper.jks
+            echo "KEY_STORE_PASSWORD=${{ secrets.KEY_STORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          fi
+
+      - name: 构建 release APK
+        run: |
+          chmod 777 ./gradlew
+          ./gradlew app:assembleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-apk-${{ needs.extract-version.outputs.version }}
+          path: app/build/outputs/apk/release
+
+  # 发布release
+  release:
+    needs: [extract-version, check-tag, create-tag, build]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.should_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.extract-version.outputs.tag }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-apk-${{ needs.extract-version.outputs.version }}
+          path: release
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.extract-version.outputs.tag }}
+          name: Release ${{ needs.extract-version.outputs.tag }}
+          files: release/app-release.apk
+          draft: false
+          prerelease: ${{ contains(needs.extract-version.outputs.version, 'beta') || contains(needs.extract-version.outputs.version, 'alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
