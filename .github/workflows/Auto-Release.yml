@@ -1,115 +1,86 @@
-# ============================================================
-# API Quota Helper - 自动发布工作流
-# 
-# 触发条件：
-#   1. push 到 master 分支（自动检测版本变化）
-#   2. 手动触发（workflow_dispatch）
-#
-# 自动逻辑：
-#   - 从 build.gradle.kts 读取 val ver = "X.X.X"
-#   - 检查 tag vX.X.X 是否存在
-#   - 不存在 → 自动打 tag → 构建 → 发布 Release
-#   - 已存在 → 仅构建（不上传 Release）
-#
-# 使用方式：
-#   只需修改 app/build.gradle.kts 中的 val ver = "X.X.X"
-#   然后 git add . && git commit -m "..." && git push
-#   如果版本号变化且 tag 不存在，会自动发布
-# ============================================================
-
 name: Release Build
 
-# ----------------------------------------------------------
-# 触发条件
-# ----------------------------------------------------------
+# 触发条件：
+# 1. push 到 master 分支（自动检测版本变化）
+# 2. 手动触发（workflow_dispatch）
 on:
-  # 每次 push 到 master 分支时自动运行
   push:
     branches:
       - master
-  # 支持手动在 GitHub Actions 页面触发
   workflow_dispatch:
 
-# ----------------------------------------------------------
-# 权限配置（必须有才能推送 tag 和创建 release）
-# ----------------------------------------------------------
+# GitHub Actions 需要写权限来创建 tag 和 release
 permissions:
   contents: write
 
 jobs:
-  # ============================================================
-  # 步骤1：从 build.gradle.kts 提取版本号
-  # ============================================================
+  # ==================== 步骤1：提取版本号 ====================
+  # 从 app/build.gradle.kts 中读取 val ver = "X.X.X"
+  # 输出：
+  #   version: X.X.X（如 1.0.63）
+  #   tag: vX.X.X（如 v1.0.63）
   extract-version:
     runs-on: ubuntu-latest
     outputs:
-      # 纯版本号，如 "1.0.63"
       version: ${{ steps.extract.outputs.version }}
-      # 带 v 前缀的 tag 名，如 "v1.0.63"
       tag: ${{ steps.extract.outputs.tag }}
     steps:
       - uses: actions/checkout@v5
-
-      # 提取 val ver = "X.X.X" 中的版本号
       - id: extract
         run: |
+          # 使用 sed 提取 val ver = "X.X.X" 中的版本号
           VER=$(grep 'val ver = ' app/build.gradle.kts | sed 's/.*val ver = "//;s/".*//')
-          echo "提取到的版本号: $VER"
+          echo "提取到版本: $VER"
           echo "version=$VER" >> $GITHUB_OUTPUT
           echo "tag=v$VER" >> $GITHUB_OUTPUT
 
-  # ============================================================
-  # 步骤2：检查 tag 是否已存在
-  # ============================================================
+  # ==================== 步骤2：检查tag是否已存在 ====================
+  # 如果 tag 已存在，说明这个版本已经发布过，跳过重复发布
+  # 如果 tag 不存在，说明是新版本，需要发布
   check-tag:
     needs: extract-version
     runs-on: ubuntu-latest
     outputs:
-      # true = 需要发布（tag 不存在）
-      # false = 跳过发布（tag 已存在）
       should_release: ${{ steps.check.outputs.should_release }}
     steps:
       - uses: actions/checkout@v5
         with:
-          # 必须 fetch 所有 tag 才能检测
+          # fetch-depth: 0 获取全部历史，用于检查 tag
           fetch-depth: 0
-
       - id: check
         run: |
           TAG="${{ needs.extract-version.outputs.tag }}"
           echo "检查 tag: $TAG"
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag 已存在，跳过发布"
+            echo "tag 已存在，跳过发布"
             echo "should_release=false" >> $GITHUB_OUTPUT
           else
-            echo "Tag 不存在，将创建并发布"
+            echo "tag 不存在，将创建并发布"
             echo "should_release=true" >> $GITHUB_OUTPUT
           fi
 
-  # ============================================================
-  # 步骤3：构建 APK
-  # ============================================================
+  # ==================== 步骤3：构建 APK ====================
+  # 每次 push 到 master 都会执行构建（无论是否发布）
+  # 但只有 should_release=true 时才会保存 APK
   build:
     needs: [extract-version, check-tag]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
-          # 使用触发 workflow 的那个 commit
+          # 使用 github.sha 确保构建的是触发本次 workflow 的那个 commit
           ref: ${{ github.sha }}
 
-      # 配置 Java 17
       - uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      # 配置 Gradle
       - uses: gradle/actions/setup-gradle@v5
 
-      # 配置签名信息（如果 secrets 中有配置）
       - name: 配置签名信息
         run: |
+          # 如果配置了签名 secrets，则解码 keystore 文件
           if [ -n "${{ secrets.KEY_STORE_BASE64 }}" ]; then
             echo "${{ secrets.KEY_STORE_BASE64 }}" | base64 --decode > app/api_quota_helper.jks
             echo "KEY_STORE_PASSWORD=${{ secrets.KEY_STORE_PASSWORD }}" >> $GITHUB_ENV
@@ -120,51 +91,47 @@ jobs:
             echo "未配置签名信息，将使用调试签名"
           fi
 
-      # 构建 Release APK
       - name: 构建 release APK
         run: |
           chmod 777 ./gradlew
           ./gradlew app:assembleRelease
           echo "构建完成"
 
-      # 上传 APK（只有需要发布时才上传）
+      # 只有需要发布时才上传 artifact
       - uses: actions/upload-artifact@v4
         if: needs.check-tag.outputs.should_release == 'true'
         with:
+          # artifact 名称包含版本号，方便区分
           name: release-apk-${{ needs.extract-version.outputs.version }}
           path: app/build/outputs/apk/release
 
-  # ============================================================
-  # 步骤4：创建 Git tag（仅当需要发布时）
-  # ============================================================
+  # ==================== 步骤4：创建 git tag ====================
+  # 只有 should_release=true 时才执行
+  # 创建以 "v" 为前缀的 tag，如 v1.0.63
   create-tag:
     needs: [extract-version, check-tag]
     runs-on: ubuntu-latest
-    # 仅当 should_release == true 时执行
     if: needs.check-tag.outputs.should_release == 'true'
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ github.sha }}
-          # 必须 fetch 所有 tag 才能推送新 tag
+          # 必须 fetch-depth: 0 才能推送 tag
           fetch-depth: 0
-
-      # 使用 GitHub Actions bot 身份创建 tag
-      - name: 创建 tag
+      - name: 创建并推送 tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "${{ needs.extract-version.outputs.tag }}"
           git push origin "${{ needs.extract-version.outputs.tag }}"
-          echo "已创建并推送 tag: ${{ needs.extract-version.outputs.tag }}"
+          echo "已创建 tag: ${{ needs.extract-version.outputs.tag }}"
 
-  # ============================================================
-  # 步骤5：发布 GitHub Release（仅当需要发布时）
-  # ============================================================
+  # ==================== 步骤5：发布 GitHub Release ====================
+  # 只有所有前序步骤都成功后才执行
+  # 使用 softprops/action-gh-release 创建正式的 Release
   release:
     needs: [extract-version, check-tag, create-tag, build]
     runs-on: ubuntu-latest
-    # 仅当 should_release == true 时执行
     if: needs.check-tag.outputs.should_release == 'true'
     steps:
       # 下载构建好的 APK
@@ -173,18 +140,39 @@ jobs:
           name: release-apk-${{ needs.extract-version.outputs.version }}
           path: release
 
-      # 使用第三方 action 创建 Release
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # 使用自动提取的 tag 名
+          # tag 名称
           tag_name: ${{ needs.extract-version.outputs.tag }}
-          release_name: Release ${{ needs.extract-version.outputs.tag }}
+          # Release 标题
+          name: Release ${{ needs.extract-version.outputs.tag }}
           # 上传的 APK 文件
           files: release/app-release.apk
-          # 非草稿，直接发布
+          # 是否为草稿（false = 直接发布）
           draft: false
-          # 包含 beta 或 alpha 关键字则为预发布版本
+          # 如果版本号包含 beta 或 alpha 则为预发布
           prerelease: ${{ contains(needs.extract-version.outputs.version, 'beta') || contains(needs.extract-version.outputs.version, 'alpha') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# ==================== 使用说明 ====================
+# 工作流程：
+# 1. 每次 push 到 master，自动提取 build.gradle.kts 中的版本号
+# 2. 检查对应的 tag（vX.X.X）是否已存在
+# 3. 如果 tag 不存在：
+#    - 创建 tag 并推送
+#    - 构建 release APK
+#    - 创建 GitHub Release 并上传 APK
+# 4. 如果 tag 已存在：只构建，不发布（防止重复发布）
+#
+# 版本号规范：
+# - 使用语义化版本（Semantic Versioning）
+# - versionCode 自动计算：major*10000 + minor*100 + patch
+#   例如：1.0.63 -> 10063，1.1.0 -> 10100，2.0.0 -> 20000
+# - git tag 使用 "v" + versionName，如 v1.0.63
+#
+# 注意事项：
+# - 只需修改 build.gradle.kts 中的 val ver = "X.X.X"
+# - versionCode 和 git tag 自动同步
+# - 不要手动创建 tag，会导致版本混乱
