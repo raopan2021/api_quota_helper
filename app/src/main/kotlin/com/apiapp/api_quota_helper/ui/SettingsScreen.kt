@@ -802,7 +802,7 @@ fun LogScreen(onBack: () -> Unit) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(logs, key = { it.id }) { entry ->
                             SwipeToDeleteCard(
@@ -901,7 +901,8 @@ fun SwipeToDeleteCard(
             )
         },
         enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true
+        enableDismissFromEndToStart = true,
+        modifier = Modifier.animateContentSize() // 高度平滑过渡
     )
 }
 
@@ -927,7 +928,7 @@ fun LogEntryCardContent(
             modifier = Modifier
                 .padding(8.dp)
                 .fillMaxWidth()
-                .heightIn(max = 200.dp) // 最大高度200dp，超出部分滚动
+                .heightIn(max = 100.dp) // 最大高度100dp，超出部分滚动
                 .verticalScroll(rememberScrollState())
         ) {
             // 顶部栏：状态图标 + 时间 + 删除按钮（右上角）
