@@ -45,15 +45,15 @@ jobs:
             echo "should_release=true" >> $GITHUB_OUTPUT
           fi
 
-  # 构建（tag不存在时也构建，但不发布release）
+  # 构建
   build:
     needs: [extract-version, check-tag]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ needs.extract-version.outputs.tag }}
-          # 如果tag不存在，checkout master
+          # 使用当前触发的commit（最新代码），不用tag ref
+          ref: ${{ github.ref }}
           sparse-checkout: |
             app/build.gradle.kts
             app/src
