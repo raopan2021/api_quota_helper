@@ -52,13 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          # 使用当前触发的commit（最新代码），不用tag ref
           ref: ${{ github.ref }}
-          sparse-checkout: |
-            app/build.gradle.kts
-            app/src
-            gradle
-            .github
 
       - uses: actions/setup-java@v5
         with:
@@ -93,6 +87,9 @@ jobs:
     runs-on: ubuntu-latest
     if: needs.check-tag.outputs.should_release == 'true'
     steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref }}
       - name: 创建 tag
         run: |
           git config user.name "github-actions[bot]"
