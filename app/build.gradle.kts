@@ -76,6 +76,14 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // APK 输出文件名：api-quota-helper-vX.X.XX.apk
+    applicationVariants.configureEach {
+        outputs.all {
+            val variantOutput = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            variantOutput.outputFileName = "api-quota-helper-${versionName}.apk"
+        }
+    }
 }
 
 dependencies {
