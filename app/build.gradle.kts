@@ -14,8 +14,10 @@ android {
         applicationId = "com.apiapp.api_quota_helper"
         minSdk = 26
         targetSdk = 35
-        versionCode = 58
-        versionName = "1.0.58"
+        // versionName为唯一数据源，versionCode自动计算
+        val ver = "1.0.58"
+        versionCode = ver.split(".")[2].toInt()
+        versionName = ver
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

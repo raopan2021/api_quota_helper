@@ -147,7 +147,7 @@ fun PickerColumn(
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier
                 .menuAnchor()
-                .width(80.dp),
+                .width(100.dp),
             singleLine = true,
             textStyle = LocalTextStyle.current.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         )
@@ -886,8 +886,7 @@ fun SwipeToDeleteCard(
                 entry = entry,
                 isSelected = isSelected,
                 onSelect = onSelect,
-                onCopy = onCopy,
-                onDelete = onDelete
+                onCopy = onCopy
             )
         },
         enableDismissFromStartToEnd = false,
@@ -902,8 +901,7 @@ fun LogEntryCardContent(
     entry: LogBuffer.LogEntry,
     isSelected: Boolean,
     onSelect: () -> Unit,
-    onCopy: () -> Unit,
-    onDelete: () -> Unit
+    onCopy: () -> Unit
 ) {
     val backgroundColor = if (entry.success) {
         Color(0xFF4CAF50).copy(alpha = 0.1f)
@@ -962,18 +960,6 @@ fun LogEntryCardContent(
                             modifier = Modifier.size(14.dp)
                         )
                     }
-                }
-                // 删除按钮（右上角）
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        painter = Icons2.Delete(),
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                        modifier = Modifier.size(16.dp)
-                    )
                 }
             }
 
