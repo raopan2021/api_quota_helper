@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,16 +51,16 @@ fun MainScreen(
                     onClick = onNavigateToSettings,
                     containerColor = MaterialTheme.colorScheme.secondaryContainer
                 ) {
-                    Icon(Icons.Default.Settings, contentDescription = "设置")
+                    Icon(Icons2.Settings, contentDescription = "设置")
                 }
                 SmallFloatingActionButton(
                     onClick = { viewModel.refreshAllQuotas(force = true) },
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                    Icon(Icons2.Refresh, contentDescription = "刷新")
                 }
                 FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "添加账户")
+                    Icon(Icons2.Add, contentDescription = "添加账户")
                 }
             }
         }
@@ -130,7 +128,7 @@ fun EmptyState(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            Icons.Default.Cloud,
+            Icons2.Cloud,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -194,7 +192,7 @@ fun AccountCard(
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            Icons.Default.AccountCircle,
+                            Icons2.AccountCircle,
                             contentDescription = null,
                             tint = statusColor,
                             modifier = Modifier.size(40.dp)
@@ -269,7 +267,7 @@ fun AccountCard(
                     accountWithQuota.error != null -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.Error,
+                                Icons2.Error,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(16.dp)
@@ -378,17 +376,17 @@ fun AccountCard(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onRefresh) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons2.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("刷新")
                     }
                     TextButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons2.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("编辑")
                     }
                     TextButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons2.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("删除")
                     }
@@ -503,7 +501,7 @@ fun AddEditAccountDialog(
                         enabled = pasteContent.isNotEmpty(),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons2.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("识别")
                     }
@@ -522,7 +520,7 @@ fun AddEditAccountDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                Icons.Default.Warning,
+                                Icons2.Warning,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp)

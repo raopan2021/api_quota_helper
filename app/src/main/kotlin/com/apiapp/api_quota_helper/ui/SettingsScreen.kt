@@ -9,8 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -331,7 +329,7 @@ fun SettingsScreen(
                 title = { Text("设置") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons2.ArrowBack, contentDescription = "返回")
                     }
                 }
             )
@@ -358,7 +356,7 @@ fun SettingsScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        if (settings.darkMode) Icons.Default.DarkMode else Icons.Default.LightMode,
+                        if (settings.darkMode) Icons2.DarkMode else Icons2.LightMode,
                         contentDescription = null
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -411,7 +409,7 @@ fun SettingsScreen(
                 onClick = onShowLogs,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.Terminal, contentDescription = null)
+                Icon(Icons2.Terminal, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("查看日志")
             }
@@ -464,7 +462,7 @@ fun SettingsScreen(
                                     Button(
                                         onClick = { downloadAndInstall(updateInfo!!.downloadUrl) }
                                     ) {
-                                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons2.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text("打开下载页")
                                     }
@@ -510,7 +508,7 @@ fun SettingsScreen(
                             if (isCheckingUpdate) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
-                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons2.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             }
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(if (isCheckingUpdate) "检查中..." else "检查更新")
@@ -521,7 +519,7 @@ fun SettingsScreen(
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases")))
                             }
                         ) {
-                            Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons2.OpenInNew, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("下载更新")
                         }
@@ -563,12 +561,12 @@ fun LogScreen(onBack: () -> Unit) {
                 title = { Text("网络日志") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "返回")
+                        Icon(Icons2.ArrowBack, contentDescription = "返回")
                     }
                 },
                 actions = {
                     IconButton(onClick = { showDeleteAllConfirm = true }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "清空全部")
+                        Icon(Icons2.DeleteSweep, contentDescription = "清空全部")
                     }
                 }
             )
@@ -578,7 +576,7 @@ fun LogScreen(onBack: () -> Unit) {
                 onClick = { refreshKey++ },
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             ) {
-                Icon(Icons.Default.Refresh, contentDescription = "刷新")
+                Icon(Icons2.Refresh, contentDescription = "刷新")
             }
         }
     ) { padding ->
@@ -610,7 +608,7 @@ fun LogScreen(onBack: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                Icons.Default.TouchApp,
+                                Icons2.TouchApp,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -738,7 +736,7 @@ fun SwipeToDeleteCard(
                 contentAlignment = Alignment.CenterEnd
             ) {
                 Icon(
-                    Icons.Default.Delete,
+                    Icons2.Delete,
                     contentDescription = "删除",
                     tint = Color(0xFFF44336)
                 )
@@ -782,7 +780,7 @@ fun LogEntryCardContent(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(
-                    imageVector = if (entry.success) Icons.Default.CheckCircle else Icons.Default.Error,
+                    imageVector = if (entry.success) Icons2.CheckCircle else Icons2.Error,
                     contentDescription = null,
                     tint = accentColor,
                     modifier = Modifier.size(16.dp)
@@ -799,7 +797,7 @@ fun LogEntryCardContent(
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
-                        Icons.Default.ContentCopy,
+                        Icons2.ContentCopy,
                         contentDescription = "复制",
                         modifier = Modifier.size(16.dp)
                     )
@@ -811,7 +809,7 @@ fun LogEntryCardContent(
             // 用户名
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Default.Person,
+                    Icons2.Person,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -829,7 +827,7 @@ fun LogEntryCardContent(
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Upload,
+                        Icons2.Upload,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
@@ -854,7 +852,7 @@ fun LogEntryCardContent(
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    Icons.Default.Code,
+                    Icons2.Code,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
