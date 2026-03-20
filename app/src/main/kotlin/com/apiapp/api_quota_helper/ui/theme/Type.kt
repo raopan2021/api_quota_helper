@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.sp
 
 /**
  * 应用字体样式配置
+ * 定义应用中使用的文字大小、字重、行高等样式
  */
 val Typography = Typography(
     // 大号正文字体
