@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   # ==================== 步骤1：提取版本号 ====================
-  # 从 app/build.gradle.kts 中读取 val ver = "X.X.X"
+  # 从 android/app/build.gradle.kts 中读取 val ver = "X.X.X"
   # 输出：
   #   version: X.X.X（如 1.0.63）
   #   tag: vX.X.X（如 v1.0.63）
@@ -29,7 +29,7 @@ jobs:
       - id: extract
         run: |
           # 使用 sed 提取 val ver = "X.X.X" 中的版本号
-          VER=$(grep 'val ver = ' app/build.gradle.kts | sed 's/.*val ver = "//;s/".*//')
+          VER=$(grep 'val ver = ' android/app/build.gradle.kts | sed 's/.*val ver = "//;s/".*//')
           echo "提取到版本: $VER"
           echo "version=$VER" >> $GITHUB_OUTPUT
           echo "tag=v$VER" >> $GITHUB_OUTPUT
@@ -85,7 +85,7 @@ jobs:
         run: |
           # 如果配置了签名 secrets，则解码 keystore 文件
           if [ -n "${{ secrets.KEY_STORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEY_STORE_BASE64 }}" | base64 --decode > app/api_quota_helper.jks
+            echo "${{ secrets.KEY_STORE_BASE64 }}" | base64 --decode > android/app/api_quota_helper.jks
             echo "KEY_STORE_PASSWORD=${{ secrets.KEY_STORE_PASSWORD }}" >> $GITHUB_ENV
             echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
             echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV

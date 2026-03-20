@@ -1,63 +1,14 @@
-# 依赖目录
-node_modules/
+# 多平台项目 - 忽略各平台构建产物
+android/app/build/
+android/.gradle/
+android/.kotlin/
+android/build/
+android/local.properties
 
-# Expo
-.expo/
-.expo-shared/
-dist/
-npm-debug.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-*.orig.*
+windows/bin/
+windows/obj/
 
-# iOS (Xcode)
-build/
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata
-*.xccheckout
-*.moved-aside
-DerivedData
-*.hmap
-*.ipa
-*.xcuserstate
-ios/.xcode.env.local
-ios/Pods/
-ios/*.xcworkspace
+# 保留 GitHub Actions workflow
+!.github/workflows/
 
-# Android
-android/app/build
-android/.gradle
-android/build
-android/gradle
-
-# GitHub Actions
-!.github/workflows/*.yml
-
-# 本地配置
 .DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# 日志
-logs
-*.log
-
-# TypeScript
-*.tsbuildinfo
-
-# Android Studio
-.idea
-.gradle
-local.properties
