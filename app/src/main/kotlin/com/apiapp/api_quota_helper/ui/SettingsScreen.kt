@@ -309,7 +309,7 @@ fun SettingsScreen(
                             responseCode = 403,
                             responseMessage = "rate limit exceeded",
                             responseBody = "",
-                            errorMessage = "${e::class.java.simpleName}: ${e.message}，请关闭VPN后再尝试"
+                            errorMessage = "RateLimited，请关闭VPN后再尝试"
                         )
                     }
                     is ApiResult.HttpError -> {
