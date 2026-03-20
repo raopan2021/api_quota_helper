@@ -752,6 +752,8 @@ fun SwipeToDeleteCard(
     onCopy: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var expanded by remember { mutableStateOf(true) }
+
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
@@ -780,7 +782,13 @@ fun SwipeToDeleteCard(
             }
         },
         content = {
-            LogEntryCardContent(entry = entry, onCopy = onCopy)
+            LogEntryCardContent(
+                entry = entry,
+                onCopy = onCopy,
+                expanded = expanded,
+                onToggle = { expanded = !expanded },
+                onDelete = onDelete
+            )
         },
         enableDismissFromStartToEnd = false,
         enableDismissFromEndToStart = true
@@ -790,7 +798,10 @@ fun SwipeToDeleteCard(
 @Composable
 fun LogEntryCardContent(
     entry: LogBuffer.LogEntry,
-    onCopy: () -> Unit
+    onCopy: () -> Unit,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit
 ) {
     val backgroundColor = if (entry.success) {
         Color(0xFF4CAF50).copy(alpha = 0.1f)
@@ -804,7 +815,7 @@ fun LogEntryCardContent(
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // 第一行：成功/失败 + 图标 + 时间 + 复制按钮（全部左对齐）
+            // 第一行：成功/失败 + 图标 + 时间 + 操作按钮
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -828,34 +839,64 @@ fun LogEntryCardContent(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.weight(1f))
+                // 折叠按钮
+                if (entry.requestBody.isNotEmpty() || entry.responseBody.isNotEmpty()) {
+                    IconButton(
+                        onClick = onToggle,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            painter = if (expanded) Icons2.ArrowBack() else Icons2.Add(),
+                            contentDescription = if (expanded) "折叠" else "展开",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+                // 删除按钮
                 IconButton(
-                    onClick = onCopy,
+                    onClick = onDelete,
                     modifier = Modifier.size(28.dp)
                 ) {
-                    Icon(painter = Icons2.ContentCopy(),
-                                contentDescription = "复制",
+                    Icon(
+                        painter = Icons2.Delete(),
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                         modifier = Modifier.size(16.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (expanded) {
+                Spacer(modifier = Modifier.height(8.dp))
 
-            // 用户名
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(painter = Icons2.Person(),
+                // 用户名 + 复制
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(painter = Icons2.Person(),
                                 contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = entry.username,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = entry.username,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    IconButton(
+                        onClick = onCopy,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(painter = Icons2.ContentCopy(),
+                                    contentDescription = "复制",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
 
             // 请求体
             if (entry.requestBody.isNotEmpty()) {
@@ -914,6 +955,7 @@ fun LogEntryCardContent(
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
+            }
             }
         }
     }
