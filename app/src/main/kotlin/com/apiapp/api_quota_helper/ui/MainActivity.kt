@@ -52,13 +52,16 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     
+                    // 跟踪前一个页面，用于判断是否从设置页返回
+                    var previousScreen by remember { mutableStateOf("main") }
+
                     // 页面切换动画
                     AnimatedContent(
                         targetState = currentScreen,
                         transitionSpec = {
                             val duration = 400
                             val easing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f) // fastOutSlowIn approximation
-                            
+
                             when (targetState) {
                                 "main" -> {
                                     // 从左边滑入 + 缩放
@@ -132,6 +135,14 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         label = "screen_transition"
                     ) { screen ->
+                        // 当从设置页返回首页时，刷新额度
+                        LaunchedEffect(screen, previousScreen) {
+                            if (screen == "main" && previousScreen == "settings") {
+                                viewModel.refreshAllQuotas(force = true)
+                            }
+                            previousScreen = screen
+                        }
+
                         when (screen) {
                             "main" -> {
                                 MainScreen(

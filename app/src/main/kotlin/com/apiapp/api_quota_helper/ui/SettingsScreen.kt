@@ -9,6 +9,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -120,6 +122,58 @@ data class UpdateInfo(
     val downloadUrl: String,
     val releaseNotes: String
 )
+
+// 滚动选择器组件
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PickerColumn(
+    value: Int,
+    range: IntRange,
+    onValueChange: (Int) -> Unit,
+    label: @Composable () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = value.toString().padStart(2, '0'),
+            onValueChange = {},
+            readOnly = true,
+            label = label,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .menuAnchor()
+                .width(80.dp),
+            singleLine = true,
+            textStyle = LocalTextStyle.current.copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            range.forEach { item ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = item.toString().padStart(2, '0'),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    onClick = {
+                        onValueChange(item)
+                        expanded = false
+                    },
+                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                )
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -379,52 +433,47 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Text("刷新间隔", style = MaterialTheme.typography.bodyMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // 滚动选择器
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                OutlinedTextField(
-                    value = intervalHours.toString(),
-                    onValueChange = {
-                        val v = it.toIntOrNull() ?: 0
-                        if (v in 0..23) {
-                            intervalHours = v
-                            onRefreshIntervalChange(intervalHours * 3600 + intervalMinutes * 60 + intervalSeconds)
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    label = { Text("时") },
-                    singleLine = true
+                // 小时
+                PickerColumn(
+                    value = intervalHours,
+                    range = 0..23,
+                    onValueChange = { intervalHours = it },
+                    label = { Text("时") }
                 )
-                OutlinedTextField(
-                    value = intervalMinutes.toString(),
-                    onValueChange = {
-                        val v = it.toIntOrNull() ?: 0
-                        if (v in 0..59) {
-                            intervalMinutes = v
-                            onRefreshIntervalChange(intervalHours * 3600 + intervalMinutes * 60 + intervalSeconds)
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    label = { Text("分") },
-                    singleLine = true
+                Spacer(modifier = Modifier.width(8.dp))
+                // 分钟
+                PickerColumn(
+                    value = intervalMinutes,
+                    range = 0..59,
+                    onValueChange = { intervalMinutes = it },
+                    label = { Text("分") }
                 )
-                OutlinedTextField(
-                    value = intervalSeconds.toString(),
-                    onValueChange = {
-                        val v = it.toIntOrNull() ?: 0
-                        if (v in 0..59) {
-                            intervalSeconds = v
-                            onRefreshIntervalChange(intervalHours * 3600 + intervalMinutes * 60 + intervalSeconds)
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    label = { Text("秒") },
-                    singleLine = true
+                Spacer(modifier = Modifier.width(8.dp))
+                // 秒
+                PickerColumn(
+                    value = intervalSeconds,
+                    range = 0..59,
+                    onValueChange = { intervalSeconds = it },
+                    label = { Text("秒") }
                 )
+            }
+
+            // 自动保存：每次选择变化时更新间隔
+            LaunchedEffect(intervalHours, intervalMinutes, intervalSeconds) {
+                val totalSeconds = intervalHours * 3600 + intervalMinutes * 60 + intervalSeconds
+                if (totalSeconds > 0) {
+                    onRefreshIntervalChange(totalSeconds)
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -456,6 +505,7 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.height(8.dp))
 
+            // 关于 - 基本信息卡片
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -467,93 +517,157 @@ fun SettingsScreen(
                     Text("版本: ${BuildConfig.VERSION_NAME}")
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("作者: raopan")
+                }
+            }
 
-                    // 更新提示
-                    if (updateInfo != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp)
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 检查更新卡片
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // 状态提示
+                    when {
+                        updateInfo != null -> {
+                            // 发现新版本
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "发现新版本: v${updateInfo!!.version}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Button(
-                                        onClick = { downloadAndInstall(updateInfo!!.downloadUrl) }
-                                    ) {
-                                        Icon(painter = Icons2.OpenInNew(), contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("打开下载页")
-                                    }
-                                }
-                                if (updateInfo!!.releaseNotes.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = updateInfo!!.releaseNotes,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
+                                Text(
+                                    text = "发现新版本: v${updateInfo!!.version}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            if (updateInfo!!.releaseNotes.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = updateInfo!!.downloadUrl,
+                                    text = updateInfo!!.releaseNotes,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                OutlinedButton(
+                                    onClick = { checkForUpdate() },
+                                    enabled = !isCheckingUpdate
+                                ) {
+                                    if (isCheckingUpdate) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(painter = Icons2.Refresh(), contentDescription = null, modifier = Modifier.size(18.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(if (isCheckingUpdate) "检查中..." else "检查更新")
+                                }
+                                FilledTonalButton(
+                                    onClick = {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases")))
+                                    }
+                                ) {
+                                    Icon(painter = Icons2.OpenInNew(), contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("前往下载页")
+                                }
+                            }
+                        }
+                        updateCheckError != null -> {
+                            // 检查失败
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = updateCheckError!!,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedButton(
+                                    onClick = { checkForUpdate() },
+                                    enabled = !isCheckingUpdate
+                                ) {
+                                    if (isCheckingUpdate) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(painter = Icons2.Refresh(), contentDescription = null, modifier = Modifier.size(18.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(if (isCheckingUpdate) "检查中..." else "重试")
+                                }
+                            }
+                        }
+                        updateCheckSuccessMsg != null -> {
+                            // 已是最新版本
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = updateCheckSuccessMsg!!,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedButton(
+                                    onClick = { checkForUpdate() },
+                                    enabled = !isCheckingUpdate
+                                ) {
+                                    if (isCheckingUpdate) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(painter = Icons2.Refresh(), contentDescription = null, modifier = Modifier.size(18.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(if (isCheckingUpdate) "检查中..." else "检查更新")
+                                }
+                            }
+                        }
+                        isCheckingUpdate -> {
+                            // 检查中状态
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "正在检查更新...",
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                         }
-                    } else if (updateCheckError != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = updateCheckError!!,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    } else if (updateCheckSuccessMsg != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = updateCheckSuccessMsg!!,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedButton(
-                            onClick = { checkForUpdate() },
-                            enabled = !isCheckingUpdate
-                        ) {
-                            if (isCheckingUpdate) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                            } else {
-                                Icon(painter = Icons2.Refresh(), contentDescription = null, modifier = Modifier.size(18.dp))
+                        else -> {
+                            // 初始状态，等待检查
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                OutlinedButton(
+                                    onClick = { checkForUpdate() },
+                                    enabled = !isCheckingUpdate
+                                ) {
+                                    if (isCheckingUpdate) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(painter = Icons2.Refresh(), contentDescription = null, modifier = Modifier.size(18.dp))
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(if (isCheckingUpdate) "检查中..." else "检查更新")
+                                }
+                                FilledTonalButton(
+                                    onClick = {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases")))
+                                    }
+                                ) {
+                                    Icon(painter = Icons2.OpenInNew(), contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("前往下载页")
+                                }
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(if (isCheckingUpdate) "检查中..." else "检查更新")
-                        }
-
-                        FilledTonalButton(
-                            onClick = {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/raopan2021/api_quota_helper/releases")))
-                            }
-                        ) {
-                            Icon(painter = Icons2.OpenInNew(), contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("下载更新")
                         }
                     }
                 }
@@ -752,8 +866,6 @@ fun SwipeToDeleteCard(
     onCopy: () -> Unit,
     onDelete: () -> Unit
 ) {
-    var expanded by remember { mutableStateOf(true) }
-
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value == SwipeToDismissBoxValue.EndToStart) {
@@ -785,8 +897,6 @@ fun SwipeToDeleteCard(
             LogEntryCardContent(
                 entry = entry,
                 onCopy = onCopy,
-                expanded = expanded,
-                onToggle = { expanded = !expanded },
                 onDelete = onDelete
             )
         },
@@ -799,8 +909,6 @@ fun SwipeToDeleteCard(
 fun LogEntryCardContent(
     entry: LogBuffer.LogEntry,
     onCopy: () -> Unit,
-    expanded: Boolean,
-    onToggle: () -> Unit,
     onDelete: () -> Unit
 ) {
     val backgroundColor = if (entry.success) {
@@ -814,49 +922,45 @@ fun LogEntryCardContent(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            // 第一行：成功/失败 + 图标 + 时间 + 操作按钮
+        // 内部滚动容器
+        Column(
+            modifier = Modifier
+                .padding(8.dp)
+                .fillMaxWidth()
+                .heightIn(max = 200.dp) // 最大高度200dp，超出部分滚动
+                .verticalScroll(rememberScrollState())
+        ) {
+            // 顶部栏：状态图标 + 时间 + 删除按钮（右上角）
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = if (entry.success) "成功" else "失败",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = accentColor
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Icon(
-                    painter = if (entry.success) Icons2.CheckCircle() else Icons2.Error(),
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = entry.time,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                // 折叠按钮
-                if (entry.requestBody.isNotEmpty() || entry.responseBody.isNotEmpty()) {
-                    IconButton(
-                        onClick = onToggle,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            painter = if (expanded) Icons2.ArrowBack() else Icons2.Add(),
-                            contentDescription = if (expanded) "折叠" else "展开",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (entry.success) "成功" else "失败",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = accentColor
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        painter = if (entry.success) Icons2.CheckCircle() else Icons2.Error(),
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = entry.time,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
-                // 删除按钮
+                // 删除按钮（右上角）
                 IconButton(
                     onClick = onDelete,
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
                         painter = Icons2.Delete(),
@@ -867,74 +971,73 @@ fun LogEntryCardContent(
                 }
             }
 
-            if (expanded) {
-                Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-                // 用户名 + 复制
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+            // 用户名 + 复制
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(painter = Icons2.Person(),
+                            contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = entry.username,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                IconButton(
+                    onClick = onCopy,
+                    modifier = Modifier.size(24.dp)
                 ) {
-                    Icon(painter = Icons2.Person(),
-                                contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    Icon(painter = Icons2.ContentCopy(),
+                                contentDescription = "复制",
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = entry.username,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    IconButton(
-                        onClick = onCopy,
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(painter = Icons2.ContentCopy(),
-                                    contentDescription = "复制",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
                 }
+            }
 
             // 请求体
             if (entry.requestBody.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(painter = Icons2.Upload(),
                                 contentDescription = null,
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "请求",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = formatJson(entry.requestBody),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
 
             // 响应码和消息
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(painter = Icons2.Code(),
                                 contentDescription = null,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(12.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "响应: ${entry.responseCode} ${entry.responseMessage}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
             }
@@ -943,19 +1046,18 @@ fun LogEntryCardContent(
             if (entry.errorMessage != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = entry.errorMessage,
-                    style = MaterialTheme.typography.bodySmall,
+                    text = entry.errorMessage ?: "",
+                    style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFFF44336)
                 )
             } else if (entry.responseBody.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = formatJson(entry.responseBody),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                 )
-            }
             }
         }
     }
