@@ -39,11 +39,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cd windows
           gh release create v${{ steps.extract-version.outputs.VERSION }} \
             --title "v${{ steps.extract-version.outputs.VERSION }}" \
             --notes "API Quota Helper Windows版 v${{ steps.extract-version.outputs.VERSION }}" \
-            ApiQuotaHelper.exe
+            publish/ApiQuotaHelper.exe
 
   android-release:
     needs: windows-release
