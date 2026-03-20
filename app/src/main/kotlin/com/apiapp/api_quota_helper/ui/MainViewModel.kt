@@ -194,9 +194,9 @@ class MainViewModel(
         }
     }
 
-    fun updateRefreshInterval(minutes: Int) {
+    fun updateRefreshInterval(seconds: Int) {
         viewModelScope.launch {
-            val newSettings = _uiState.value.settings.copy(refreshIntervalMinutes = minutes)
+            val newSettings = _uiState.value.settings.copy(refreshIntervalSeconds = seconds)
             repository.saveSettings(newSettings)
             _uiState.update { it.copy(settings = newSettings) }
         }

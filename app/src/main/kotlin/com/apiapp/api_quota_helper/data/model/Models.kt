@@ -58,5 +58,5 @@ data class AccountWithQuota(
 @Serializable
 data class AppSettings(
     val darkMode: Boolean = false,
-    val refreshIntervalMinutes: Int = 30
+    val refreshIntervalSeconds: Int = 60  // 默认 0h 1min 0s
 )

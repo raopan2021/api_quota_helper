@@ -131,7 +131,9 @@ fun SettingsScreen(
     onShowLogs: () -> Unit
 ) {
     val context = LocalContext.current
-    var interval by remember { mutableFloatStateOf(settings.refreshIntervalMinutes.toFloat()) }
+    var intervalHours by remember { mutableIntStateOf(settings.refreshIntervalSeconds / 3600) }
+    var intervalMinutes by remember { mutableIntStateOf((settings.refreshIntervalSeconds % 3600) / 60) }
+    var intervalSeconds by remember { mutableIntStateOf(settings.refreshIntervalSeconds % 60) }
 
     // 更新检查状态
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
@@ -381,18 +383,48 @@ fun SettingsScreen(
             Text("刷新间隔", style = MaterialTheme.typography.bodyMedium)
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Slider(
-                    value = interval,
-                    onValueChange = { interval = it },
-                    onValueChangeFinished = { onRefreshIntervalChange(interval.toInt()) },
-                    valueRange = 5f..120f,
-                    steps = 22,
-                    modifier = Modifier.weight(1f)
+                OutlinedTextField(
+                    value = intervalHours.toString(),
+                    onValueChange = {
+                        val v = it.toIntOrNull() ?: 0
+                        if (v in 0..23) {
+                            intervalHours = v
+                            onRefreshIntervalChange(intervalHours * 3600 + intervalMinutes * 60 + intervalSeconds)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("时") },
+                    singleLine = true
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("${interval.toInt()} 分钟")
+                OutlinedTextField(
+                    value = intervalMinutes.toString(),
+                    onValueChange = {
+                        val v = it.toIntOrNull() ?: 0
+                        if (v in 0..59) {
+                            intervalMinutes = v
+                            onRefreshIntervalChange(intervalHours * 3600 + intervalMinutes * 60 + intervalSeconds)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("分") },
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = intervalSeconds.toString(),
+                    onValueChange = {
+                        val v = it.toIntOrNull() ?: 0
+                        if (v in 0..59) {
+                            intervalSeconds = v
+                            onRefreshIntervalChange(intervalHours * 3600 + intervalMinutes * 60 + intervalSeconds)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("秒") },
+                    singleLine = true
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
