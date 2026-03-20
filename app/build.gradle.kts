@@ -14,8 +14,8 @@ android {
         applicationId = "com.apiapp.api_quota_helper"
         minSdk = 26
         targetSdk = 35
-        versionCode = 52
-        versionName = "1.0.52"
+        versionCode = 58
+        versionName = "1.0.58"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
