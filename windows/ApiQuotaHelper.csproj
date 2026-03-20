@@ -8,7 +8,7 @@
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <AssemblyName>ApiQuotaHelper</AssemblyName>
     <RootNamespace>ApiQuotaHelper</RootNamespace>
-    <Version>1.1.2</Version>
+    <Version>1.1.3</Version>
     <FileName>api-quota-helper.exe</FileName>
     <!-- 单文件发布，裁剪未使用代码 -->
     <PublishSingleFile>true</PublishSingleFile>
