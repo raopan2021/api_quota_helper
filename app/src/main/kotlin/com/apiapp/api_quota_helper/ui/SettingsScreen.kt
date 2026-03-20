@@ -222,19 +222,67 @@ fun SettingsScreen(
                                     downloadUrl = downloadUrl ?: json.getString("html_url"),
                                     releaseNotes = json.optString("body", "")
                                 )
+                                LogBuffer.logResponse(
+                                    logType = "检查更新",
+                                    username = "检查更新",
+                                    requestBody = "当前版本: $currentVersion",
+                                    success = true,
+                                    responseCode = 200,
+                                    responseMessage = "发现新版本 v$latestVersion",
+                                    responseBody = result.body
+                                )
                             } else {
                                 // 已是最新版本，通过 successMsg 显示提示
                                 updateCheckSuccessMsg = "当前已是最新版本 v$currentVersion"
+                                LogBuffer.logResponse(
+                                    logType = "检查更新",
+                                    username = "检查更新",
+                                    requestBody = "当前版本: $currentVersion",
+                                    success = true,
+                                    responseCode = 200,
+                                    responseMessage = "已是最新版本 v$currentVersion",
+                                    responseBody = result.body
+                                )
                             }
                         } catch (e: java.lang.Exception) {
+                            LogBuffer.logResponse(
+                                logType = "检查更新",
+                                username = "检查更新",
+                                requestBody = "",
+                                success = false,
+                                responseCode = 200,
+                                responseMessage = "解析响应失败",
+                                responseBody = "",
+                                errorMessage = "${e::class.java.simpleName}: ${e.message}"
+                            )
                             updateCheckError = "解析响应失败"
                         }
                     }
                     is ApiResult.RateLimited -> {
                         updateCheckError = "检查更新失败，请稍后再试（可能是VPN被api.github.com拦截，请关闭VPN后再尝试）"
+                        LogBuffer.logResponse(
+                            logType = "检查更新",
+                            username = "检查更新",
+                            requestBody = "",
+                            success = false,
+                            responseCode = 403,
+                            responseMessage = "rate limit exceeded",
+                            responseBody = "",
+                            errorMessage = "RateLimited，（可能是VPN被api.github.com拦截，请关闭VPN后再尝试）"
+                        )
                     }
                     is ApiResult.HttpError -> {
                         updateCheckError = "检查更新失败: HTTP ${result.code}"
+                        LogBuffer.logResponse(
+                            logType = "检查更新",
+                            username = "检查更新",
+                            requestBody = "",
+                            success = false,
+                            responseCode = result.code,
+                            responseMessage = result.message,
+                            responseBody = "",
+                            errorMessage = "HTTP ${result.code} ${result.message}"
+                        )
                     }
                 }
             } finally {
