@@ -182,9 +182,6 @@ class QuotaService() {
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.setRequestProperty("Accept", "application/json")
 
-                // 记录请求日志
-                LogBuffer.logRequest("额度查询", account.username, jsonBody)
-
                 // 发送请求
                 OutputStreamWriter(connection.outputStream, "UTF-8").use { writer ->
                     writer.write(jsonBody)
