@@ -607,7 +607,7 @@ fun LogScreen(onBack: () -> Unit) {
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(painter = Icons2.TouchApp()
+                            Icon(painter = Icons2.TouchApp(),
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
@@ -734,8 +734,8 @@ fun SwipeToDeleteCard(
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
             ) {
-                Icon(painter = Icons2.Delete()
-                    contentDescription = "删除",
+                Icon(painter = Icons2.Delete(),
+                                contentDescription = "删除",
                     tint = Color(0xFFF44336)
                 )
             }
@@ -794,8 +794,8 @@ fun LogEntryCardContent(
                     onClick = onCopy,
                     modifier = Modifier.size(28.dp)
                 ) {
-                    Icon(painter = Icons2.ContentCopy()
-                        contentDescription = "复制",
+                    Icon(painter = Icons2.ContentCopy(),
+                                contentDescription = "复制",
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -805,8 +805,8 @@ fun LogEntryCardContent(
 
             // 用户名
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(painter = Icons2.Person()
-                    contentDescription = null,
+                Icon(painter = Icons2.Person(),
+                                contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -822,8 +822,8 @@ fun LogEntryCardContent(
             if (entry.requestBody.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(painter = Icons2.Upload()
-                        contentDescription = null,
+                    Icon(painter = Icons2.Upload(),
+                                contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -846,8 +846,8 @@ fun LogEntryCardContent(
             // 响应码和消息
             Spacer(modifier = Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(painter = Icons2.Code()
-                    contentDescription = null,
+                Icon(painter = Icons2.Code(),
+                                contentDescription = null,
                     modifier = Modifier.size(14.dp),
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
