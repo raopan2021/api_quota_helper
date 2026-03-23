@@ -22,12 +22,19 @@
           当前: {{ displayText }}
         </p>
       </div>
-      <van-cascader
-        v-model:show="showPicker"
-        title="刷新间隔"
-        :options="cascadeOptions"
-        @finish="onCascaderFinish"
-      />
+
+      <van-popup v-model:show="showPicker" position="bottom" round>
+        <van-picker-group
+          :tabs="['选择时间']"
+          @confirm="onConfirm"
+          @cancel="showPicker = false"
+        >
+          <van-time-picker
+            v-model="currentTime"
+            :columns-type="['hour', 'minute', 'second']"
+          />
+        </van-picker-group>
+      </van-popup>
     </div>
 
     <div class="settings-section">
@@ -60,24 +67,19 @@ function toggleDark() {
   setDarkMode(!settings.value.darkMode);
 }
 
-// 级联选项：时 -> 分 -> 秒
-function buildOptions() {
-  const hours = Array.from({ length: 24 }, (_, i) => ({ text: `${i} 小时`, value: i * 3600 }));
-  const minutes = Array.from({ length: 60 }, (_, i) => ({ text: `${i} 分钟`, value: i * 60 }));
-  const seconds = Array.from({ length: 60 }, (_, i) => ({ text: `${i} 秒`, value: i }));
-  return [
-    { text: '时', children: hours },
-    { text: '分', children: minutes },
-    { text: '秒', children: seconds },
-  ];
+function parseSeconds(secs) {
+  const total = secs || 300;
+  return {
+    hour: Math.floor(total / 3600),
+    minute: Math.floor((total % 3600) / 60),
+    second: total % 60,
+  };
 }
 
-const cascadeOptions = buildOptions();
+const currentTime = ref(parseSeconds(settings.value.refreshIntervalSeconds));
 
 function formatTime(secs) {
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
+  const { hour: h, minute: m, second: s } = parseSeconds(secs);
   const parts = [];
   if (h > 0) parts.push(`${h} 小时`);
   if (m > 0) parts.push(`${m} 分钟`);
@@ -87,9 +89,11 @@ function formatTime(secs) {
 
 const displayText = computed(() => formatTime(settings.value.refreshIntervalSeconds || 300));
 
-function onCascaderFinish({ selectedOptions }) {
-  const total = selectedOptions.reduce((sum, opt) => sum + opt.value, 0);
+function onConfirm() {
+  const { hour, minute, second } = currentTime.value;
+  const total = hour * 3600 + minute * 60 + second;
   setRefreshInterval(total);
+  showPicker.value = false;
   showToast({ message: `已设置为 ${formatTime(total)}`, position: 'top' });
 }
 
