@@ -14,14 +14,15 @@ function AppContent() {
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ username: '', token: '', error: '' });
-  const [showToken, setShowToken] = useState(false);
   const [recognizeResult, setRecognizeResult] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [recognizeText, setRecognizeText] = useState('');
 
   function openAdd() {
     setEditing(null);
     setForm({ username: '', token: '', error: '' });
     setRecognizeResult(null);
+    setRecognizeText('');
     setShowAdd(true);
   }
 
@@ -37,6 +38,7 @@ function AppContent() {
     setEditing(null);
     setForm({ username: '', token: '', error: '' });
     setRecognizeResult(null);
+    setRecognizeText('');
   }
 
   async function handleSave() {
@@ -53,11 +55,19 @@ function AppContent() {
     refreshAll();
   }
 
-  // 自动识别：从表单 Token 字段解析账户信息
-  function handleAutoRecognize() {
-    const text = form.token.trim();
-    if (!text) { setRecognizeResult({ ok: false, message: '请先粘贴内容' }); setTimeout(() => setRecognizeResult(null), 3000); return; }
-    const result = parseAccountFromClipboard(text);
+  // 自动识别：从剪贴板读取混合文本，解析后填入上方表单
+  async function handleAutoRecognize() {
+    let text = recognizeText.trim();
+    if (!text) {
+      try {
+        text = await navigator.clipboard.readText();
+      } catch {
+        setRecognizeResult({ ok: false, message: '读取剪贴板失败，请手动粘贴' });
+        setTimeout(() => setRecognizeResult(null), 3000);
+        return;
+      }
+    }
+    const result = parseAccount(text);
     if (result) {
       setForm(f => ({ ...f, username: result.username, token: result.token }));
       setRecognizeResult({ ok: true, message: `识别成功：${result.username}` });
@@ -65,7 +75,7 @@ function AppContent() {
       const m = text.match(/(sk-[\w-]+)/);
       if (m) {
         setForm(f => ({ ...f, token: m[1] }));
-        setRecognizeResult({ ok: true, message: '已提取Token，请补充用户名' });
+        setRecognizeResult({ ok: true, message: '已提取 Token，请补充用户名' });
       } else {
         setRecognizeResult({ ok: false, message: '无法识别，请手动输入' });
       }
@@ -74,7 +84,7 @@ function AppContent() {
   }
 
   // 从文本解析账户信息
-  function parseAccountFromClipboard(text) {
+  function parseAccount(text) {
     if (!text) return null;
     const apiKey = text.match(/API Key[：:]\s*(\S+)/)?.[1] || text.match(/(sk-[\w-]+)/)?.[1];
     const username = text.match(/账户[：:]\s*(\S+)/)?.[1] || text.match(/用户名[：:]\s*(\S+)/)?.[1];
@@ -91,7 +101,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-200" style={settings.darkMode ? {} : {}}>
+    <div className="min-h-screen dvh flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-200" style={settings.darkMode ? {} : {}}>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between shadow-sm">
         <span className="font-bold text-base truncate">API 额度助手</span>
@@ -106,7 +116,7 @@ function AppContent() {
       </header>
 
       {/* Main */}
-      <main style={{ paddingBottom: '40px' }}>
+      <main style={{ paddingBottom: '40px', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', flex: 1, overflowY: 'auto' }}>
         <Home onEdit={openEdit} />
       </main>
 
@@ -147,32 +157,36 @@ function AppContent() {
           <div style={{ ...styles.modal, background: settings.darkMode ? '#2a2a2a' : '#fff' }}>
             <h3 style={{ marginBottom: '16px', fontSize: '18px' }}>{editing ? '编辑账户' : '添加账户'}</h3>
             <label style={{ ...styles.label, color: settings.darkMode ? '#aaa' : '#666' }}>用户名</label>
-            <input style={{ ...styles.input, background: settings.darkMode ? '#333' : '#fafafa', borderColor: settings.darkMode ? '#444' : '#ddd', color: settings.darkMode ? '#e0e0e0' : '#333' }} value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} placeholder="username" />
+            <input
+              style={{ ...styles.input, background: settings.darkMode ? '#333' : '#fafafa', borderColor: settings.darkMode ? '#444' : '#ddd', color: settings.darkMode ? '#e0e0e0' : '#333' }}
+              value={form.username}
+              onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              placeholder="输入或粘贴用户名"
+            />
+
             <label style={{ ...styles.label, color: settings.darkMode ? '#aaa' : '#666' }}>Token</label>
-            <div style={{ position: 'relative' }}>
-              <div
-                style={{ ...styles.tokenDisplay, background: settings.darkMode ? '#333' : '#fafafa', borderColor: settings.darkMode ? '#444' : '#ddd', color: settings.darkMode ? '#e0e0e0' : '#333', minHeight: '72px', cursor: 'text' }}
-                onClick={() => document.getElementById('tokenInput')?.focus()}
-              >
-                <textarea
-                  id="tokenInput"
-                  style={{ width: '100%', height: '100%', minHeight: '60px', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: '14px', fontFamily: 'monospace', color: 'inherit', lineHeight: '1.5', padding: '0' }}
-                  value={showToken ? form.token : (form.token ? '•'.repeat(Math.min(form.token.length, 40)) : '')}
-                  onChange={e => setForm(f => ({ ...f, token: e.target.value }))}
-                  placeholder="粘贴 Token 内容，sk-xxxx"
-                  onFocus={e => e.target.setSelectionRange(e.target.value.length, e.target.value.length)}
-                />
-              </div>
-              <button
-                style={{ position: 'absolute', right: '8px', top: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px' }}
-                onClick={() => setShowToken(!showToken)}
-                title={showToken ? '隐藏Token' : '显示Token'}
-              >
-                {showToken ? '👁' : '👁‍🗨'}
-              </button>
+            <input
+              style={{ ...styles.input, background: settings.darkMode ? '#333' : '#fafafa', borderColor: settings.darkMode ? '#444' : '#ddd', color: settings.darkMode ? '#e0e0e0' : '#333', fontFamily: 'monospace' }}
+              value={form.token}
+              onChange={e => setForm(f => ({ ...f, token: e.target.value }))}
+              placeholder="粘贴 Token，sk-xxxx"
+            />
+
+            <div style={{ ...styles.divider }}>
+              <span style={styles.dividerLine} />
+              <span style={{ ...styles.dividerText, color: settings.darkMode ? '#555' : '#999' }}>或从剪贴板自动识别</span>
+              <span style={styles.dividerLine} />
             </div>
-            <button style={{ ...styles.smallBtn, marginTop: '6px', width: '100%' }} onClick={handleAutoRecognize}>
-              📋 自动识别
+
+            <textarea
+              style={{ ...styles.textarea, background: settings.darkMode ? '#333' : '#fafafa', borderColor: settings.darkMode ? '#444' : '#ddd', color: settings.darkMode ? '#e0e0e0' : '#333' }}
+              value={recognizeText}
+              onChange={e => setRecognizeText(e.target.value)}
+              placeholder="粘贴包含用户名和 Token 的混合文本，点击识别自动填充上方字段"
+              rows={3}
+            />
+            <button style={{ ...styles.smallBtn, marginTop: '6px', width: '100%', background: '#f0f7ff', borderColor: '#1677ff', color: '#1677ff' }} onClick={handleAutoRecognize}>
+              🎯 自动识别并填充上方
             </button>
             {recognizeResult && (
               <div style={{ ...styles.recognizeResult, background: recognizeResult.ok ? '#E8F5E9' : '#FFEBEE', color: recognizeResult.ok ? '#2E7D32' : '#C62828' }}>
@@ -217,6 +231,10 @@ const styles = {
   label: { display: 'block', fontSize: '13px', margin: '8px 0 4px' },
   input: { width: '100%', padding: '10px 12px', border: '1px solid', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' },
   tokenDisplay: { padding: '10px 12px', border: '1px solid', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'monospace' },
+  textarea: { width: '100%', padding: '10px 12px', border: '1px solid', borderRadius: '8px', fontSize: '13px', boxSizing: 'border-box', fontFamily: 'monospace', resize: 'none', lineHeight: '1.5', display: 'block' },
+  divider: { display: 'flex', alignItems: 'center', gap: '8px', margin: '12px 0 8px' },
+  dividerLine: { flex: 1, height: '1px', background: '#eee' },
+  dividerText: { fontSize: '12px', whiteSpace: 'nowrap' },
   smallBtn: { padding: '8px 14px', border: '1px solid #ddd', borderRadius: '8px', background: '#f5f5f5', cursor: 'pointer', fontSize: '13px', whiteSpace: 'nowrap' },
   cancelBtn: { padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', border: '1px solid #ddd', background: '#f5f5f5', fontSize: '14px' },
   recognizeResult: { fontSize: '12px', padding: '6px 10px', borderRadius: '6px', marginTop: '8px' },

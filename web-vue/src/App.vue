@@ -1,6 +1,6 @@
 <template>
-  <div :class="['app', { dark: settings.darkMode }]" class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-200">
-    <header class="sticky top-0 z-100 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between shadow-sm">
+  <div :class="['app', { dark: settings.darkMode }]" class="min-h-screen dvh flex flex-col bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-200">
+    <header class="sticky top-0 z-100 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0" style="padding-top:max(12px, env(safe-area-inset-top));padding-bottom:max(12px, env(safe-area-inset-bottom));">
       <span class="font-bold text-base truncate">API 额度助手</span>
       <div class="header-btns flex gap-2 flex-shrink-0">
         <button class="primary px-3 py-1 text-sm rounded-md border border-blue-500 bg-blue-500 text-white hover:bg-blue-600 transition-colors" @click="openAdd">+ 添加</button>
@@ -12,14 +12,14 @@
       </div>
     </header>
 
-    <main class="pb-4">
+    <main class="flex-1 overflow-y-auto pb-4" style="overscroll-behavior:contain;-webkit-overflow-scrolling:touch;">
       <Home @edit="openEdit" />
     </main>
 
     <!-- 右侧日志弹窗 -->
     <div v-if="showLogs" class="layer-mask" @click.self="showLogs = false">
-      <div class="layer-panel" :class="{ dark: settings.darkMode }">
-        <div class="layer-header">
+      <div class="layer-panel" :class="{ dark: settings.darkMode }" style="padding-bottom:env(safe-area-inset-bottom);">
+        <div class="layer-header" style="padding-top:max(16px, env(safe-area-inset-top));">
           <h3>日志</h3>
           <button class="layer-close" @click="showLogs = false">×</button>
         </div>
@@ -47,22 +47,25 @@
       <div class="modal">
         <h3>{{ editing ? '编辑账户' : '添加账户' }}</h3>
         <label>用户名</label>
-        <input v-model="form.username" placeholder="username" />
+        <input v-model="form.username" placeholder="输入或粘贴用户名" />
+
         <label>Token</label>
-        <div class="token-area">
-          <div class="token-display" :class="{ dark: settings.darkMode }">
-            <textarea
-              v-model="form.token"
-              :placeholder="'粘贴 Token 内容，sk-xxxx'"
-              :style="{ width: '100%', height: '72px', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: '14px', fontFamily: 'monospace', color: settings.darkMode ? '#e0e0e0' : '#333', lineHeight: '1.5', padding: '0', display: 'block' }"
-              @focus="e => e.target.setSelectionRange(e.target.value.length, e.target.value.length)"
-            />
-            <button class="eye-btn" @click="showToken = !showToken" :title="showToken ? '隐藏Token' : '显示Token'">
-              {{ showToken ? '👁' : '👁‍🗨' }}
-            </button>
-          </div>
+        <input v-model="form.token" placeholder="粘贴 Token，sk-xxxx" style="font-family: monospace;" />
+
+        <div class="divider">
+          <span class="divider-line" />
+          <span class="divider-text">或从剪贴板自动识别</span>
+          <span class="divider-line" />
         </div>
-        <button class="btn-full" @click="handleAutoRecognize">📋 自动识别</button>
+
+        <textarea
+          v-model="recognizeText"
+          placeholder="粘贴包含用户名和 Token 的混合文本，点击识别自动填充上方字段"
+          style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:monospace;resize:none;line-height:1.5;display:block;box-sizing:border-box;"
+          rows="3"
+        />
+        <button class="btn-full" style="background:#f0f7ff;border-color:#1989fa;color:#1989fa;margin-top:6px;" @click="handleAutoRecognize">🎯 自动识别并填充上方</button>
+
         <!-- 自动识别结果 -->
         <div v-if="recognizeResult" class="recognize-result" :class="recognizeResult.ok ? 'success' : 'fail'">
           {{ recognizeResult.message }}
@@ -99,6 +102,7 @@ const showToken = ref(false);
 const refreshing = ref(false);
 const form = reactive({ username: '', token: '', error: '' });
 const recognizeResult = ref(null);
+const recognizeText = ref('');
 
 // 账户数据（运行时Quota状态）
 const accountData = ref({});
@@ -118,15 +122,19 @@ function saveAccountData() {
   sessionStorage.setItem('accountData', JSON.stringify(accountData.value));
 }
 
-// 自动识别：从表单 Token 字段解析账户信息
-function handleAutoRecognize() {
-  const text = form.token.trim();
+// 自动识别：从剪贴板读取混合文本，解析后填入上方表单
+async function handleAutoRecognize() {
+  let text = recognizeText.value.trim();
   if (!text) {
-    recognizeResult.value = { ok: false, message: '请先粘贴内容' };
-    setTimeout(() => { recognizeResult.value = null; }, 3000);
-    return;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch {
+      recognizeResult.value = { ok: false, message: '读取剪贴板失败，请手动粘贴' };
+      setTimeout(() => { recognizeResult.value = null; }, 3000);
+      return;
+    }
   }
-  const result = parseAccountFromClipboard(text);
+  const result = parseAccount(text);
   if (result) {
     form.username = result.username;
     form.token = result.token;
@@ -135,7 +143,7 @@ function handleAutoRecognize() {
     const m = text.match(/(sk-[\w-]+)/);
     if (m) {
       form.token = m[1];
-      recognizeResult.value = { ok: true, message: '已提取Token，请补充用户名' };
+      recognizeResult.value = { ok: true, message: '已提取 Token，请补充用户名' };
     } else {
       recognizeResult.value = { ok: false, message: '无法识别，请手动输入' };
     }
@@ -144,7 +152,7 @@ function handleAutoRecognize() {
 }
 
 // 从文本解析账户信息
-function parseAccountFromClipboard(text) {
+function parseAccount(text) {
   if (!text) return null;
   const apiKey = text.match(/API Key[：:]\s*(\S+)/)?.[1] || text.match(/(sk-[\w-]+)/)?.[1];
   const username = text.match(/账户[：:]\s*(\S+)/)?.[1] || text.match(/用户名[：:]\s*(\S+)/)?.[1];
@@ -160,6 +168,7 @@ function openAdd() {
   form.token = '';
   form.error = '';
   recognizeResult.value = null;
+  recognizeText.value = '';
   showAdd.value = true;
 }
 
@@ -345,6 +354,9 @@ main { padding-bottom: 40px; }
 .token-display.dark { border-color: #444; background: #333; }
 .eye-btn { position: absolute; right: 8px; top: 8px; background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
 .btn-full { width: 100%; padding: 8px 14px; border-radius: 8px; border: 1px solid #ddd; background: #f5f5f5; cursor: pointer; font-size: 13px; margin-top: 6px; }
+.divider { display: flex; align-items: center; gap: 8px; margin: 12px 0 8px; }
+.divider-line { flex: 1; height: 1px; background: #eee; }
+.divider-text { font-size: 12px; color: #999; white-space: nowrap; }
 .token-row input { flex: 1; }
 .token-row button { padding: 0 10px; border: 1px solid #ddd; border-radius: 8px; background: #f5f5f5; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .app.dark .token-row button { border-color: #444; background: #333; color: #e0e0e0; }

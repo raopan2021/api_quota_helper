@@ -8,7 +8,18 @@
     <meta name="format-detection" content="telephone=no" />
     <title>API 额度助手</title>
     <style>
-      html, body, #root { overscroll-behavior: none; margin: 0; padding: 0; }
+      html, body, #root {
+        overscroll-behavior: none;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        /* iOS Safari 100dvh 兼容 */
+        min-height: -webkit-fill-available;
+      }
+      /* 修复 iOS Safari 100dvh 问题 */
+      @supports (height: 100dvh) {
+        html, body, #root { height: 100dvh; }
+      }
     </style>
   </head>
   <body>

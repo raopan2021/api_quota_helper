@@ -8,7 +8,16 @@
     <meta name="format-detection" content="telephone=no" />
     <title>API 额度助手</title>
     <style>
-      html, body { overscroll-behavior: none; }
+      html, body, #app {
+        overscroll-behavior: none;
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        min-height: -webkit-fill-available;
+      }
+      @supports (height: 100dvh) {
+        html, body, #app { height: 100dvh; }
+      }
     </style>
   </head>
   <body>
