@@ -26,12 +26,12 @@
       <van-popup v-model:show="showPicker" position="bottom" round>
         <van-picker-group
           :tabs="['选择时间']"
-          @confirm="onConfirm"
           @cancel="showPicker = false"
         >
           <van-time-picker
             v-model="currentTime"
             :columns-type="['hour', 'minute', 'second']"
+            @confirm="onTimeConfirm"
           />
         </van-picker-group>
       </van-popup>
@@ -89,8 +89,11 @@ function formatTime(secs) {
 
 const displayText = computed(() => formatTime(settings.value.refreshIntervalSeconds || 300));
 
-function onConfirm() {
-  const { hour, minute, second } = currentTime.value;
+function onTimeConfirm(values) {
+  // values 是字符串数组 [hourStr, minuteStr, secondStr]
+  const hour = parseInt(values[0], 10) || 0;
+  const minute = parseInt(values[1], 10) || 0;
+  const second = parseInt(values[2], 10) || 0;
   const total = hour * 3600 + minute * 60 + second;
   setRefreshInterval(total);
   showPicker.value = false;
