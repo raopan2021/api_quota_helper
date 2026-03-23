@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, onMounted, onUnmounted, provide } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { accounts, addAccount, updateAccount, deleteAccount } from './stores/accounts.js';
 import { useLogs } from './stores/logs.js';

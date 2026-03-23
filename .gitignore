@@ -12,3 +12,6 @@ windows/obj/
 !.github/workflows/
 
 .DS_Store
+
+web-vue/package-lock.json
+web-react/package-lock.json
