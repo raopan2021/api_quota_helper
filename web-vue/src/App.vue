@@ -49,11 +49,20 @@
         <label>用户名</label>
         <input v-model="form.username" placeholder="username" />
         <label>Token</label>
-        <div class="token-row">
-          <input v-model="form.token" :type="showToken ? 'text' : 'password'" placeholder="sk-xxxx" />
-          <button @click="showToken = !showToken">{{ showToken ? '隐藏' : '显示' }}</button>
-          <button @click="scanClipboard">扫描</button>
+        <div class="token-area">
+          <div class="token-display" :class="{ dark: settings.darkMode }">
+            <textarea
+              v-model="form.token"
+              :placeholder="'粘贴 Token 内容，sk-xxxx'"
+              :style="{ width: '100%', height: '72px', background: 'transparent', border: 'none', outline: 'none', resize: 'none', fontSize: '14px', fontFamily: 'monospace', color: settings.darkMode ? '#e0e0e0' : '#333', lineHeight: '1.5', padding: '0', display: 'block' }"
+              @focus="e => e.target.setSelectionRange(e.target.value.length, e.target.value.length)"
+            />
+            <button class="eye-btn" @click="showToken = !showToken" :title="showToken ? '隐藏Token' : '显示Token'">
+              {{ showToken ? '👁' : '👁‍🗨' }}
+            </button>
+          </div>
         </div>
+        <button class="btn-full" @click="handleAutoRecognize">📋 自动识别</button>
         <!-- 自动识别结果 -->
         <div v-if="recognizeResult" class="recognize-result" :class="recognizeResult.ok ? 'success' : 'fail'">
           {{ recognizeResult.message }}
@@ -109,30 +118,28 @@ function saveAccountData() {
   sessionStorage.setItem('accountData', JSON.stringify(accountData.value));
 }
 
-// 扫描剪贴板并自动识别
-async function scanClipboard() {
-  try {
-    const text = await navigator.clipboard.readText();
-    const result = parseAccountFromClipboard(text);
-    if (result) {
-      form.username = result.username;
-      form.token = result.token;
-      recognizeResult.value = { ok: true, message: `识别成功：${result.username}` };
-      addLog({ logType: '账户识别', username: '系统', requestBody: text, success: true, status: 200, message: `识别成功：${result.username}`, body: JSON.stringify(result) });
-    } else {
-      // 尝试只匹配token
-      const m = text.match(/(sk-[\w-]+)/);
-      if (m) {
-        form.token = m[1];
-        recognizeResult.value = { ok: true, message: '已提取Token，请补充用户名' };
-      } else {
-        recognizeResult.value = { ok: false, message: '无法识别，请手动输入' };
-      }
-    }
-  } catch (e) {
-    recognizeResult.value = { ok: false, message: '读取剪贴板失败' };
+// 自动识别：从表单 Token 字段解析账户信息
+function handleAutoRecognize() {
+  const text = form.token.trim();
+  if (!text) {
+    recognizeResult.value = { ok: false, message: '请先粘贴内容' };
+    setTimeout(() => { recognizeResult.value = null; }, 3000);
+    return;
   }
-  // 3秒后清除识别结果
+  const result = parseAccountFromClipboard(text);
+  if (result) {
+    form.username = result.username;
+    form.token = result.token;
+    recognizeResult.value = { ok: true, message: `识别成功：${result.username}` };
+  } else {
+    const m = text.match(/(sk-[\w-]+)/);
+    if (m) {
+      form.token = m[1];
+      recognizeResult.value = { ok: true, message: '已提取Token，请补充用户名' };
+    } else {
+      recognizeResult.value = { ok: false, message: '无法识别，请手动输入' };
+    }
+  }
   setTimeout(() => { recognizeResult.value = null; }, 3000);
 }
 
@@ -333,6 +340,11 @@ main { padding-bottom: 40px; }
 .modal input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; background: #fafafa; }
 .app.dark .modal input { border-color: #444; background: #333; color: #e0e0e0; }
 .token-row { display: flex; gap: 6px; }
+.token-area { margin-bottom: 8px; }
+.token-display { position: relative; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; padding: 10px 12px; min-height: 72px; }
+.token-display.dark { border-color: #444; background: #333; }
+.eye-btn { position: absolute; right: 8px; top: 8px; background: none; border: none; cursor: pointer; font-size: 16px; padding: 4px; }
+.btn-full { width: 100%; padding: 8px 14px; border-radius: 8px; border: 1px solid #ddd; background: #f5f5f5; cursor: pointer; font-size: 13px; margin-top: 6px; }
 .token-row input { flex: 1; }
 .token-row button { padding: 0 10px; border: 1px solid #ddd; border-radius: 8px; background: #f5f5f5; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .app.dark .token-row button { border-color: #444; background: #333; color: #e0e0e0; }
