@@ -36,7 +36,8 @@ data class MainUiState(
  */
 class MainViewModel(
     private val repository: AccountRepository,
-    private val quotaService: QuotaService
+    private val quotaService: QuotaService,
+    private val notificationHelper: NotificationHelper? = null
 ) : ViewModel() {
 
     /** 私有状态流 */
@@ -90,23 +91,15 @@ class MainViewModel(
 
     /**
      * 刷新所有账户的额度
-     * @param force 是否强制刷新（true时会清空现有数据，显示加载状态）
+     * 不清空卡片数据，等接口返回再更新
      */
-    fun refreshAllQuotas(force: Boolean = false) {
+    fun refreshAllQuotas() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             val currentAccounts = _uiState.value.accounts
 
-            // force=true 时先清空数据，显示加载状态
-            val cleared = if (force) {
-                currentAccounts.map { it.copy(quota = null, error = null) }
-            } else {
-                currentAccounts
-            }
-            _uiState.update { it.copy(accounts = cleared) }
-
-            // 并发查询所有账户额度
-            val updated = cleared.map { awq ->
+            // 并发查询所有账户额度（不清空现有数据）
+            val updated = currentAccounts.map { awq ->
                 val result = quotaService.queryQuota(awq.account)
                 awq.copy(
                     quota = result.getOrNull(),
@@ -115,6 +108,15 @@ class MainViewModel(
                 )
             }
             _uiState.update { it.copy(accounts = updated, isRefreshing = false) }
+
+            // 更新通知栏额度显示
+            val quotaSummary = updated.mapNotNull { awq ->
+                awq.quota?.let { quota ->
+                    val percent = (quota.remaining / quota.amount * 100).toInt()
+                    "${awq.account.username}: ${percent}%"
+                }
+            }
+            notificationHelper?.updateQuotaNotification(quotaSummary)
         }
     }
 

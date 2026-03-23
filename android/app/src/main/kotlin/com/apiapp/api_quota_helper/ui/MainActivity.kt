@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.apiapp.api_quota_helper.data.repository.AccountRepository
 import com.apiapp.api_quota_helper.data.service.QuotaService
+import com.apiapp.api_quota_helper.data.service.NotificationHelper
 import com.apiapp.api_quota_helper.ui.theme.ApiQuotaHelperTheme
 
 /**
@@ -32,9 +33,10 @@ class MainActivity : ComponentActivity() {
             // 创建数据仓库（跨页面共享）
             val repository = remember { AccountRepository(context.applicationContext) }
             val quotaService = remember { QuotaService() }
+            val notificationHelper = remember { NotificationHelper(context.applicationContext) }
             // 创建 ViewModel
             val viewModel: MainViewModel = viewModel {
-                MainViewModel(repository, quotaService)
+                MainViewModel(repository, quotaService, notificationHelper)
             }
 
             // 收集 UI 状态
@@ -150,7 +152,7 @@ class MainActivity : ComponentActivity() {
                         // 从设置页返回首页时，刷新额度
                         LaunchedEffect(screen, previousScreen) {
                             if (screen == "main" && previousScreen == "settings") {
-                                viewModel.refreshAllQuotas(force = true)
+                                viewModel.refreshAllQuotas()
                             }
                             previousScreen = screen
                         }

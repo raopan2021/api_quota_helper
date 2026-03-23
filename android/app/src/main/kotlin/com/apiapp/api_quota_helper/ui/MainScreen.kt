@@ -67,10 +67,18 @@ fun MainScreen(
                     Icon(painter = Icons2.Settings(), contentDescription = "设置")
                 }
                 SmallFloatingActionButton(
-                    onClick = { viewModel.refreshAllQuotas(force = true) },
+                    onClick = { viewModel.refreshAllQuotas() },
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    Icon(painter = Icons2.Refresh(), contentDescription = "刷新")
+                    if (uiState.isRefreshing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        Icon(painter = Icons2.Refresh(), contentDescription = "刷新")
+                    }
                 }
                 FloatingActionButton(onClick = { showAddDialog = true }) {
                     Icon(painter = Icons2.Add(), contentDescription = "添加账户")
@@ -108,13 +116,7 @@ fun MainScreen(
                 }
             }
 
-            if (uiState.isRefreshing) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter)
-                )
-            }
+            // 刷新时在刷新按钮上显示旋转动画，不再用顶部进度条
         }
     }
 
@@ -174,12 +176,20 @@ fun AccountCard(
     val quota = accountWithQuota.quota
     val remainingPercent = quota?.let { (it.remaining / it.amount * 100) } ?: 0.0
     val isLoading = quota == null && accountWithQuota.error == null
-    
-    // 根据剩余额度比例确定颜色，加载状态用灰色
-    val statusColor = when {
+
+    // 根据剩余额度比例确定颜色：绿色>50%，黄色>20%，红色≤20%
+    val quotaColor = when {
         isLoading -> Color(0xFF9E9E9E) // 灰色-加载中
         remainingPercent > 50 -> Color(0xFF4CAF50) // 绿色
-        remainingPercent > 20 -> Color(0xFF2196F3) // 蓝色
+        remainingPercent > 20 -> Color(0xFFFFC107) // 黄色
+        else -> Color(0xFFF44336) // 红色
+    }
+
+    // 根据剩余天数确定颜色：绿色>10天，黄色>3天，红色≤3天
+    val daysColor = when {
+        quota == null -> Color(0xFF9E9E9E) // 灰色-加载中
+        quota.days_remaining > 10 -> Color(0xFF4CAF50) // 绿色
+        quota.days_remaining > 3 -> Color(0xFFFFC107) // 黄色
         else -> Color(0xFFF44336) // 红色
     }
 
@@ -193,7 +203,7 @@ fun AccountCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(4.dp)
-                    .background(statusColor)
+                    .background(quotaColor)
             )
             
             Column(modifier = Modifier.padding(16.dp)) {
@@ -205,7 +215,7 @@ fun AccountCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(painter = Icons2.AccountCircle(),
                             contentDescription = null,
-                            tint = statusColor,
+                            tint = quotaColor,
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -225,7 +235,7 @@ fun AccountCard(
                                     Text(
                                         " · 剩余 ${quota.days_remaining} 天",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = daysColor
                                     )
                                 }
                             }
@@ -237,35 +247,35 @@ fun AccountCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(statusColor.copy(alpha = 0.1f))
+                                .background(quotaColor.copy(alpha = 0.1f))
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 "${String.format("%.1f", remainingPercent)}%",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = statusColor
+                                color = quotaColor
                             )
                         }
                     } else if (isLoading) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(statusColor.copy(alpha = 0.1f))
+                                .background(quotaColor.copy(alpha = 0.1f))
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(14.dp),
                                     strokeWidth = 2.dp,
-                                    color = statusColor
+                                    color = quotaColor
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     "加载中",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = statusColor
+                                    color = quotaColor
                                 )
                             }
                         }
@@ -331,7 +341,7 @@ fun AccountCard(
                                         "${String.format("%.1f", quota.remaining)}",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = statusColor
+                                        color = quotaColor
                                     )
                                 }
                             }
@@ -346,8 +356,8 @@ fun AccountCard(
                                 .fillMaxWidth()
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
-                            color = statusColor,
-                            trackColor = statusColor.copy(alpha = 0.2f),
+                            color = quotaColor,
+                            trackColor = quotaColor.copy(alpha = 0.2f),
                         )
                         
                         Spacer(modifier = Modifier.height(12.dp))
