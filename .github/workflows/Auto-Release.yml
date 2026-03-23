@@ -1,0 +1,133 @@
+name: Release Build
+
+# 触发条件：
+# 1. push 到 master 分支（自动检测版本变化）
+# 2. 手动触发（workflow_dispatch）
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+# GitHub Actions 需要写权限来创建 tag 和 release
+permissions:
+  contents: write
+
+jobs:
+  # ==================== 步骤1：提取版本号 ====================
+  extract-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract.outputs.version }}
+      tag: ${{ steps.extract.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: extract
+        run: |
+          VER=$(grep 'val ver = ' app/build.gradle.kts | sed 's/.*val ver = "//;s/".*//')
+          echo "提取到版本: $VER"
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "tag=v$VER" >> $GITHUB_OUTPUT
+
+  # ==================== 步骤2：检查tag是否已存在 ====================
+  check-tag:
+    needs: extract-version
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: check
+        run: |
+          TAG="${{ needs.extract-version.outputs.tag }}"
+          echo "检查 tag: $TAG"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "tag 已存在，跳过发布"
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "tag 不存在，将创建并发布"
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ==================== 步骤3：构建 APK ====================
+  build:
+    needs: [extract-version, check-tag]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: 配置签名信息
+        run: |
+          if [ -n "${{ secrets.KEY_STORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEY_STORE_BASE64 }}" | base64 --decode > app/api_quota_helper.jks
+            echo "KEY_STORE_PASSWORD=${{ secrets.KEY_STORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+            echo "已配置签名信息"
+          else
+            echo "未配置签名信息，将使用调试签名"
+          fi
+
+      - name: 构建 release APK
+        run: |
+          chmod 777 ./gradlew
+          ./gradlew app:assembleRelease --no-build-cache
+          echo "构建完成"
+
+      # 只有需要发布时才上传 artifact
+      - uses: actions/upload-artifact@v4
+        if: needs.check-tag.outputs.should_release == 'true'
+        with:
+          name: release-apk-${{ needs.extract-version.outputs.version }}
+          path: app/build/outputs/apk/release/api-quota-helper-${{ needs.extract-version.outputs.version }}.apk
+
+  # ==================== 步骤4：创建 git tag ====================
+  create-tag:
+    needs: [extract-version, check-tag]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.should_release == 'true'
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: 创建并推送 tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ needs.extract-version.outputs.tag }}"
+          git push origin "${{ needs.extract-version.outputs.tag }}"
+          echo "已创建 tag: ${{ needs.extract-version.outputs.tag }}"
+
+  # ==================== 步骤5：发布 GitHub Release ====================
+  release:
+    needs: [extract-version, check-tag, create-tag, build]
+    runs-on: ubuntu-latest
+    if: needs.check-tag.outputs.should_release == 'true'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-apk-${{ needs.extract-version.outputs.version }}
+          path: release
+
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.extract-version.outputs.tag }}
+          name: Release ${{ needs.extract-version.outputs.tag }}
+          files: release/api-quota-helper-${{ needs.extract-version.outputs.version }}.apk
+          draft: false
+          prerelease: ${{ contains(needs.extract-version.outputs.version, 'beta') || contains(needs.extract-version.outputs.version, 'alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
