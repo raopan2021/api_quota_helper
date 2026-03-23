@@ -27,16 +27,19 @@ jobs:
           java-version: '17'
 
       - uses: gradle/actions/setup-gradle@v5
+        with:
+          working-directory: android
 
       - name: Build debug APK
         run: |
           chmod 777 ./gradlew
           ./gradlew app:assembleDebug
+        working-directory: android
 
       - uses: actions/upload-artifact@v4
         with:
           name: debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: 自动打tag
         run: |
@@ -48,6 +51,7 @@ jobs:
             git push origin v$VERSION --force
             echo "Tagged v$VERSION"
           fi
+        working-directory: android
 
 ---
 
@@ -70,6 +74,8 @@ jobs:
           java-version: '17'
 
       - uses: gradle/actions/setup-gradle@v5
+        with:
+          working-directory: android
 
       - name: 配置签名信息
         run: |
@@ -79,16 +85,18 @@ jobs:
             echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
             echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
           fi
+        working-directory: android
 
       - name: Build release APK
         run: |
           chmod 777 ./gradlew
           ./gradlew app:assembleRelease
+        working-directory: android
 
       - uses: actions/upload-artifact@v4
         with:
           name: release-apk
-          path: app/build/outputs/apk/release
+          path: android/app/build/outputs/apk/release
 
   release:
     needs: build
