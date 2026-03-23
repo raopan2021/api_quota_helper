@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Cascader, Toast } from 'antd';
+import { Cascader } from 'antd';
 import { useSettings } from '../stores/useSettings.jsx';
 import { checkUpdate } from '../services/api.js';
 
@@ -35,7 +35,6 @@ export default function Settings() {
     const [h = 0, m = 0, s = 0] = values.map(v => parseInt(v, 10) || 0);
     const total = h * 3600 + m * 60 + s;
     save({ refreshIntervalSeconds: total });
-    Toast.success(`已设置为 ${formatTime(total)}`);
   }
 
   function formatTime(secs) {

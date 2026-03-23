@@ -4,7 +4,7 @@ const API_BASE = '/api'
 
 export async function queryQuota(username, token) {
   try {
-    const res = await axios.post(`${API_BASE}/quota`, { username, token })
+    const res = await axios.post(`${API_BASE}/chaxun/query`, { username, token })
     return { ok: true, status: res.status, body: JSON.stringify(res.data) }
   } catch (e) {
     if (e.response) {
