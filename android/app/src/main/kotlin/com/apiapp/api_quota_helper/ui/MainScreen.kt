@@ -107,6 +107,7 @@ fun MainScreen(
                         items(uiState.accounts, key = { it.account.id }) { awq ->
                             AccountCard(
                                 accountWithQuota = awq,
+                                isRefreshing = uiState.refreshingAccountIds.contains(awq.account.id),
                                 onEdit = { viewModel.showEditDialog(awq.account) },
                                 onDelete = { viewModel.deleteAccount(awq.account.id) },
                                 onRefresh = { viewModel.refreshAccountManually(awq.account) }
@@ -166,6 +167,7 @@ fun EmptyState(modifier: Modifier = Modifier) {
 @Composable
 fun AccountCard(
     accountWithQuota: AccountWithQuota,
+    isRefreshing: Boolean = false,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onRefresh: () -> Unit
@@ -175,10 +177,11 @@ fun AccountCard(
 
     val quota = accountWithQuota.quota
     val remainingPercent = quota?.let { (it.remaining / it.amount * 100) } ?: 0.0
-    val isLoading = quota == null && accountWithQuota.error == null
+    val isLoading = quota == null && accountWithQuota.error == null && !isRefreshing
 
     // 根据剩余额度比例确定颜色：绿色>50%，黄色>20%，红色≤20%
     val quotaColor = when {
+        isRefreshing -> Color(0xFF9E9E9E) // 灰色-刷新中
         isLoading -> Color(0xFF9E9E9E) // 灰色-加载中
         remainingPercent > 50 -> Color(0xFF4CAF50) // 绿色
         remainingPercent > 20 -> Color(0xFFFFC107) // 黄色
@@ -187,9 +190,9 @@ fun AccountCard(
 
     // 根据剩余天数确定颜色：绿色>10天，黄色>3天，红色≤3天
     val daysColor = when {
-        quota == null -> Color(0xFF9E9E9E) // 灰色-加载中
-        quota.days_remaining > 10 -> Color(0xFF4CAF50) // 绿色
-        quota.days_remaining > 3 -> Color(0xFFFFC107) // 黄色
+        isRefreshing || (quota == null && !isLoading) -> Color(0xFF9E9E9E) // 灰色
+        quota?.days_remaining ?: 0 > 10 -> Color(0xFF4CAF50) // 绿色
+        quota?.days_remaining ?: 0 > 3 -> Color(0xFFFFC107) // 黄色
         else -> Color(0xFFF44336) // 红色
     }
 
@@ -198,13 +201,20 @@ fun AccountCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column {
-            // 顶部状态条
+            // 顶部状态条（刷新时显示渐变动画效果用框代替）
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .background(quotaColor)
-            )
+                    .height(if (isRefreshing) 8.dp else 4.dp)
+                    .background(if (isRefreshing) Color(0xFFE0E0E0) else quotaColor)
+            ) {
+                if (isRefreshing) {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = quotaColor
+                    )
+                }
+            }
             
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -395,10 +405,18 @@ fun AccountCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = onRefresh) {
-                        Icon(painter = Icons2.Refresh(), contentDescription = null, modifier = Modifier.size(18.dp))
+                    TextButton(onClick = onRefresh, enabled = !isRefreshing) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Icon(painter = Icons2.Refresh(), contentDescription = null, modifier = Modifier.size(18.dp))
+                        }
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("刷新")
+                        Text(if (isRefreshing) "刷新中" else "刷新")
                     }
                     TextButton(onClick = onEdit) {
                         Icon(painter = Icons2.Edit(), contentDescription = null, modifier = Modifier.size(18.dp))

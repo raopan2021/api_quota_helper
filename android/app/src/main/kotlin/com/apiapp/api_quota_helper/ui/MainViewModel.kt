@@ -25,6 +25,7 @@ data class MainUiState(
     val accounts: List<AccountWithQuota> = emptyList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
+    val refreshingAccountIds: Set<String> = emptySet(), // 正在单独刷新的账户ID集合
     val showAddDialog: Boolean = false,
     val editingAccount: UserAccount? = null,
     val settings: AppSettings = AppSettings(),
@@ -96,7 +97,7 @@ class MainViewModel(
      */
     fun refreshAllQuotas() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isRefreshing = true) }
+            _uiState.update { it.copy(isRefreshing = true, refreshingAccountIds = it.accounts.map { a -> a.account.id }.toSet()) }
             val currentAccounts = _uiState.value.accounts
 
             // 并发查询所有账户额度（不清空现有数据）
@@ -108,7 +109,7 @@ class MainViewModel(
                     lastUpdated = System.currentTimeMillis()
                 )
             }
-            _uiState.update { it.copy(accounts = updated, isRefreshing = false) }
+            _uiState.update { it.copy(accounts = updated, isRefreshing = false, refreshingAccountIds = emptySet()) }
 
             // 更新通知栏额度显示
             val quotaSummary = updated.mapNotNull { awq ->
@@ -219,22 +220,28 @@ class MainViewModel(
 
     /**
      * 手动刷新指定账户
-     * 先显示加载状态，再查询额度
+     * 不清空卡片数据，只标记为刷新状态
      */
     fun refreshAccountManually(account: UserAccount) {
         viewModelScope.launch {
-            // 先显示加载状态
+            // 标记该账户正在刷新
+            _uiState.update { it.copy(refreshingAccountIds = it.refreshingAccountIds + account.id) }
+
+            val result = quotaService.queryQuota(account)
             val currentAccounts = _uiState.value.accounts
             val updated = currentAccounts.map { awq ->
                 if (awq.account.id == account.id) {
-                    awq.copy(quota = null, error = null)
+                    awq.copy(
+                        quota = result.getOrNull(),
+                        error = result.exceptionOrNull()?.message,
+                        lastUpdated = System.currentTimeMillis()
+                    )
                 } else {
                     awq
                 }
             }
-            _uiState.update { it.copy(accounts = updated) }
-            // 再查询
-            refreshAccount(account)
+            // 清除刷新标记
+            _uiState.update { it.copy(accounts = updated, refreshingAccountIds = it.refreshingAccountIds - account.id) }
         }
     }
 
