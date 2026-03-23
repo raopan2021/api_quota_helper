@@ -1,7 +1,7 @@
-const API_BASE = 'https://untitled-node-6gyb.onrender.com/api';
+const API_BASE = 'http://v2api.aicodee.com/';
 
 export async function queryQuota(username, token) {
-  const res = await fetch(`${API_BASE}/quota`, {
+  const res = await fetch(`${API_BASE}/chaxun`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, token })
