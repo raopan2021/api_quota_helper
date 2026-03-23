@@ -1,0 +1,6 @@
+{
+	"appId": "com.apiapp.api_quota_helper",
+	"appName": "API Quota Helper",
+	"webDir": "dist",
+	"packageClassList": []
+}

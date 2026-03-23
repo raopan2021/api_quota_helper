@@ -24,18 +24,18 @@ export default function Home({ onEdit }) {
     return Math.min(100, (d.amountUsed / d.amount) * 100);
   }
 
-  function pclass(d) {
+  function getColor(d) {
     const p = pct(d);
-    if (p > 80) return 'danger';
-    if (p > 50) return 'warning';
-    return '';
+    if (p > 80) return '#F44336';
+    if (p > 50) return '#FF9800';
+    return '#4CAF50';
   }
 
   if (accounts.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 0', color: '#999', fontSize: '15px' }}>
         <p>暂无账户</p>
-        <p style={{ fontSize: '13px', marginTop: '8px', color: '#bbb' }}>点击底部 + 添加账户</p>
+        <p style={{ fontSize: '13px', marginTop: '8px', color: '#bbb' }}>点击上方 + 添加账户</p>
       </div>
     );
   }
@@ -60,7 +60,7 @@ export default function Home({ onEdit }) {
               <>
                 <p style={{ fontSize: '13px', opacity: 0.7 }}>{d.planName}</p>
                 <div style={styles.progressBar}>
-                  <div style={{ ...styles.progressFill, width: `${pct(d)}%`, background: pclass(d) === 'danger' ? '#F44336' : pclass(d) === 'warning' ? '#FF9800' : '#4CAF50' }} />
+                  <div style={{ ...styles.progressFill, width: `${pct(d)}%`, background: getColor(d) }} />
                 </div>
                 <div style={styles.meta}>
                   <span>已用: {d.amountUsed?.toFixed(1)}</span>

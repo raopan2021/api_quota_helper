@@ -2,7 +2,7 @@
   <div>
     <div v-if="accounts.length === 0" class="empty">
       <p>暂无账户</p>
-      <p style="font-size:13px;margin-top:8px;color:#bbb;">点击底部 + 添加账户</p>
+      <p style="font-size:13px;margin-top:8px;color:#bbb;">点击上方 + 添加账户</p>
     </div>
 
     <div v-for="acc in accounts" :key="acc.id" class="card">

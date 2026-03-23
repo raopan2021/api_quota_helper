@@ -3,6 +3,7 @@
     <header>
       <span>API 额度助手</span>
       <div class="header-btns">
+        <button class="primary" @click="openAdd">+ 添加</button>
         <button @click="showLogs = true">日志</button>
         <button @click="showSettings = true">设置</button>
         <button @click="refreshAll" :disabled="refreshing">
@@ -271,6 +272,8 @@ header {
 .app.dark .header-btns button { border-color: #444; color: #e0e0e0; }
 .header-btns button:active { background: #eee; }
 .app.dark .header-btns button:active { background: #333; }
+.header-btns button.primary { background: #1976D2; color: #fff; border-color: #1976D2; }
+.header-btns button.primary:active { background: #1565C0; }
 
 /* 刷新按钮旋转动画 */
 .spinning { display: inline-block; animation: spin 1s linear infinite; }

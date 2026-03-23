@@ -101,6 +101,7 @@ function AppContent() {
       <header style={{ ...styles.header, background: settings.darkMode ? '#2a2a2a' : '#fff', borderColor: settings.darkMode ? '#333' : '#eee' }}>
         <span style={{ fontWeight: 'bold', fontSize: '16px' }}>API 额度助手</span>
         <div style={{ display: 'flex', gap: '8px' }}>
+          <button style={{...styles.headerBtn, background: '#1976D2', color: '#fff', borderColor: '#1976D2'}} onClick={openAdd}>+ 添加</button>
           <button style={styles.headerBtn} onClick={() => setShowLogs(true)}>日志</button>
           <button style={styles.headerBtn} onClick={() => setShowSettings(true)}>设置</button>
           <button style={styles.headerBtn} onClick={handleRefresh} disabled={refreshing}>
@@ -196,9 +197,6 @@ const styles = {
   app: { fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", minHeight: '100vh' },
   header: { position: 'sticky', top: 0, zIndex: 100, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid' },
   headerBtn: { background: 'none', border: '1px solid #ddd', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '13px' },
-  nav: { position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', justifyContent: 'space-around', alignItems: 'center', padding: '8px 0 max(8px, env(safe-area-inset-bottom))', borderTop: '1px solid', zIndex: 100 },
-  navBtn: { border: 'none', background: 'none', padding: '8px 16px', cursor: 'pointer', borderRadius: '8px', fontSize: '14px' },
-  addBtn: { background: '#1976D2', color: '#fff', border: 'none', borderRadius: '50%', width: '48px', height: '48px', fontSize: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '-20px', boxShadow: '0 4px 12px rgba(25,118,210,0.4)' },
   modalMask: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' },
   modal: { borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '360px' },
   label: { display: 'block', fontSize: '13px', margin: '8px 0 4px' },
