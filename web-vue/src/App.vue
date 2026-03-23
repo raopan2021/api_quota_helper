@@ -3,24 +3,52 @@
     <header>
       <span>API 额度助手</span>
       <div class="header-btns">
-        <button @click="router.push('/logs')">日志</button>
-        <button @click="router.push('/settings')">设置</button>
-        <button @click="refreshAll" :disabled="refreshing">刷新</button>
+        <button @click="showLogs = true">日志</button>
+        <button @click="showSettings = true">设置</button>
+        <button @click="refreshAll" :disabled="refreshing">
+          <span :class="{ spinning: refreshing }">⟳</span>
+        </button>
       </div>
     </header>
 
     <main>
-      <router-view />
+      <Home @edit="openEdit" />
     </main>
 
     <nav>
-      <button @click="router.push('/')" :class="{ active: route.path === '/' }">账户</button>
-      <button class="add-btn" @click="showAdd = true">+</button>
-      <button @click="router.push('/logs')" :class="{ active: route.path === '/logs' }">日志</button>
+      <button @click="scrollToTop" :class="{ active: true }">账户</button>
+      <button class="add-btn" @click="openAdd">+</button>
+      <button @click="showLogs = true">日志</button>
     </nav>
 
-    <!-- 添加账户弹窗 -->
-    <div v-if="showAdd" class="modal-mask" @click.self="showAdd = false">
+    <!-- 右侧日志弹窗 -->
+    <div v-if="showLogs" class="layer-mask" @click.self="showLogs = false">
+      <div class="layer-panel" :class="{ dark: settings.darkMode }">
+        <div class="layer-header">
+          <h3>日志</h3>
+          <button class="layer-close" @click="showLogs = false">×</button>
+        </div>
+        <div class="layer-content">
+          <Logs />
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧设置弹窗 -->
+    <div v-if="showSettings" class="layer-mask" @click.self="showSettings = false">
+      <div class="layer-panel" :class="{ dark: settings.darkMode }">
+        <div class="layer-header">
+          <h3>设置</h3>
+          <button class="layer-close" @click="showSettings = false">×</button>
+        </div>
+        <div class="layer-content">
+          <Settings />
+        </div>
+      </div>
+    </div>
+
+    <!-- 添加/编辑账户弹窗 -->
+    <div v-if="showAdd" class="modal-mask" @click.self="closeAdd">
       <div class="modal">
         <h3>{{ editing ? '编辑账户' : '添加账户' }}</h3>
         <label>用户名</label>
@@ -31,9 +59,13 @@
           <button @click="showToken = !showToken">{{ showToken ? '隐藏' : '显示' }}</button>
           <button @click="scanClipboard">扫描</button>
         </div>
+        <!-- 自动识别结果 -->
+        <div v-if="recognizeResult" class="recognize-result" :class="recognizeResult.ok ? 'success' : 'fail'">
+          {{ recognizeResult.message }}
+        </div>
         <p v-if="form.error" class="error">{{ form.error }}</p>
         <div class="modal-actions">
-          <button @click="showAdd = false">取消</button>
+          <button @click="closeAdd">取消</button>
           <button class="primary" @click="saveAccount">保存</button>
         </div>
       </div>
@@ -43,22 +75,26 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, provide } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
 import { accounts, addAccount, updateAccount, deleteAccount } from './stores/accounts.js';
 import { useLogs } from './stores/logs.js';
 import { useSettings } from './stores/settings.js';
 import { queryQuota } from './services/api.js';
+import Home from './views/Home.vue';
+import Logs from './views/Logs.vue';
+import Settings from './views/Settings.vue';
 
-const router = useRouter();
-const route = useRoute();
 const { settings } = useSettings();
 const { log: addLog } = useLogs();
 
+// 弹窗状态
+const showLogs = ref(false);
+const showSettings = ref(false);
 const showAdd = ref(false);
 const editing = ref(null);
 const showToken = ref(false);
 const refreshing = ref(false);
 const form = reactive({ username: '', token: '', error: '' });
+const recognizeResult = ref(null);
 
 // 账户数据（运行时Quota状态）
 const accountData = ref({});
@@ -78,14 +114,69 @@ function saveAccountData() {
   sessionStorage.setItem('accountData', JSON.stringify(accountData.value));
 }
 
+// 扫描剪贴板并自动识别
 async function scanClipboard() {
   try {
     const text = await navigator.clipboard.readText();
-    const m = text.match(/(sk-[\w-]+)/);
-    if (m) { form.token = m[1]; return; }
-    const u = text.match(/账户[：:]\s*(\S+)/);
-    if (u) form.username = u[1];
-  } catch {}
+    const result = parseAccountFromClipboard(text);
+    if (result) {
+      form.username = result.username;
+      form.token = result.token;
+      recognizeResult.value = { ok: true, message: `识别成功：${result.username}` };
+      addLog({ logType: '账户识别', username: '系统', requestBody: text, success: true, status: 200, message: `识别成功：${result.username}`, body: JSON.stringify(result) });
+    } else {
+      // 尝试只匹配token
+      const m = text.match(/(sk-[\w-]+)/);
+      if (m) {
+        form.token = m[1];
+        recognizeResult.value = { ok: true, message: '已提取Token，请补充用户名' };
+      } else {
+        recognizeResult.value = { ok: false, message: '无法识别，请手动输入' };
+      }
+    }
+  } catch (e) {
+    recognizeResult.value = { ok: false, message: '读取剪贴板失败' };
+  }
+  // 3秒后清除识别结果
+  setTimeout(() => { recognizeResult.value = null; }, 3000);
+}
+
+// 从文本解析账户信息
+function parseAccountFromClipboard(text) {
+  if (!text) return null;
+  const apiKey = text.match(/API Key[：:]\s*(\S+)/)?.[1] || text.match(/(sk-[\w-]+)/)?.[1];
+  const username = text.match(/账户[：:]\s*(\S+)/)?.[1] || text.match(/用户名[：:]\s*(\S+)/)?.[1];
+  if (apiKey && username) {
+    return { username, token: apiKey };
+  }
+  return null;
+}
+
+function openAdd() {
+  editing.value = null;
+  form.username = '';
+  form.token = '';
+  form.error = '';
+  recognizeResult.value = null;
+  showAdd.value = true;
+}
+
+function openEdit(acc) {
+  editing.value = acc.id;
+  form.username = acc.username;
+  form.token = acc.token;
+  form.error = '';
+  recognizeResult.value = null;
+  showAdd.value = true;
+}
+
+function closeAdd() {
+  showAdd.value = false;
+  editing.value = null;
+  form.username = '';
+  form.token = '';
+  form.error = '';
+  recognizeResult.value = null;
 }
 
 async function saveAccount() {
@@ -95,15 +186,11 @@ async function saveAccount() {
   if (!u) { form.error = '用户名不能为空'; return; }
   if (!t) { form.error = 'Token不能为空'; return; }
   if (!editing.value) {
-    const id = addAccount({ username: u, token: t });
-    router.push('/');
+    addAccount({ username: u, token: t });
   } else {
     updateAccount(editing.value, { username: u, token: t });
   }
-  showAdd.value = false;
-  editing.value = null;
-  form.username = '';
-  form.token = '';
+  closeAdd();
   refreshAll();
 }
 
@@ -142,6 +229,10 @@ async function refreshAll() {
   refreshing.value = false;
 }
 
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function startTimer() {
   clearInterval(refreshTimer);
   refreshTimer = setInterval(refreshAll, intervalSec * 1000);
@@ -159,8 +250,8 @@ onUnmounted(() => clearInterval(refreshTimer));
 provide('accounts', accounts);
 provide('accountData', accountData);
 provide('refreshAll', refreshAll);
-provide('deleteAccount', (id) => { deleteAccount(id); delete accountData.value[id]; saveAccountData(); router.push('/'); });
-provide('editAccount', (acc) => { editing.value = acc.id; form.username = acc.username; form.token = acc.token; showAdd.value = true; });
+provide('deleteAccount', (id) => { deleteAccount(id); delete accountData.value[id]; saveAccountData(); });
+provide('editAccount', openEdit);
 </script>
 
 <style>
@@ -191,6 +282,10 @@ header {
 .header-btns button:active { background: #eee; }
 .app.dark .header-btns button:active, .app.dark nav button:active { background: #333; }
 
+/* 刷新按钮旋转动画 */
+.spinning { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
 main { padding-bottom: 80px; }
 
 nav {
@@ -204,6 +299,26 @@ nav {
 nav button { border: none; background: none; padding: 8px 16px; cursor: pointer; border-radius: 8px; font-size: 14px; color: #666; }
 nav button.active { color: #1976D2; font-weight: bold; }
 .add-btn { background: #1976D2 !important; color: #fff !important; border-radius: 50% !important; width: 48px; height: 48px; font-size: 24px !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; margin-top: -20px; box-shadow: 0 4px 12px rgba(25,118,210,0.4); }
+
+/* 右侧滑出弹窗 */
+.layer-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200; }
+.layer-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 85%; max-width: 400px;
+  background: #fff; box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+  display: flex; flex-direction: column;
+  animation: slideIn 0.25s ease-out;
+}
+.layer-panel.dark { background: #2a2a2a; }
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.layer-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px; border-bottom: 1px solid #eee;
+}
+.layer-panel.dark .layer-header { border-color: #333; }
+.layer-header h3 { font-size: 18px; }
+.layer-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #999; padding: 0; line-height: 1; }
+.layer-close:hover { color: #333; }
+.layer-content { flex: 1; overflow-y: auto; }
 
 /* 卡片 */
 .card {
@@ -228,7 +343,7 @@ nav button.active { color: #1976D2; font-weight: bold; }
 .countdown { color: #1976D2; font-size: 12px; margin-top: 4px; }
 
 /* 弹窗 */
-.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 16px; }
 .modal { background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 360px; }
 .app.dark .modal { background: #2a2a2a; }
 .modal h3 { margin-bottom: 16px; font-size: 18px; }
@@ -240,6 +355,9 @@ nav button.active { color: #1976D2; font-weight: bold; }
 .token-row input { flex: 1; }
 .token-row button { padding: 0 10px; border: 1px solid #ddd; border-radius: 8px; background: #f5f5f5; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .app.dark .token-row button { border-color: #444; background: #333; color: #e0e0e0; }
+.recognize-result { font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-top: 8px; }
+.recognize-result.success { background: #E8F5E9; color: #2E7D32; }
+.recognize-result.fail { background: #FFEBEE; color: #C62828; }
 .error { color: #F44336; font-size: 13px; margin-top: 8px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .modal-actions button { padding: 8px 16px; border-radius: 8px; cursor: pointer; border: 1px solid #ddd; background: #f5f5f5; font-size: 14px; }

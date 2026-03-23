@@ -9,8 +9,8 @@
       <div class="card-header">
         <span class="card-username">{{ acc.username }}</span>
         <div class="card-actions">
-          <button @click="refreshAll">刷新</button>
-          <button @click="editAccount(acc)">编辑</button>
+          <button @click="refreshAccount(acc)">刷新</button>
+          <button @click="$emit('edit', acc)">编辑</button>
           <button @click="deleteAccount(acc.id)">删除</button>
         </div>
       </div>
@@ -39,11 +39,12 @@
 <script setup>
 import { inject } from 'vue';
 
+defineEmits(['edit']);
+
 const accounts = inject('accounts');
 const accountData = inject('accountData');
 const refreshAll = inject('refreshAll');
 const deleteAccount = inject('deleteAccount');
-const editAccount = inject('editAccount');
 
 const data = accountData;
 
@@ -57,5 +58,12 @@ function percentClass(d) {
   if (p > 80) return 'danger';
   if (p > 50) return 'warning';
   return '';
+}
+
+function refreshAccount(acc) {
+  // 触发单个账户刷新
+  const key = acc.id;
+  data.value[key] = { ...(data.value[key] || {}), loading: true };
+  refreshAll();
 }
 </script>
