@@ -1,4 +1,4 @@
-const API_BASE = 'http://v2api.aicodee.com/';
+const API_BASE = '/api';
 
 export async function queryQuota(username, token) {
   const res = await fetch(`${API_BASE}/chaxun`, {

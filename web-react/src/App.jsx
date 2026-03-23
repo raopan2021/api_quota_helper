@@ -110,17 +110,11 @@ function AppContent() {
       </header>
 
       {/* Main */}
-      <main style={{ paddingBottom: '80px' }}>
+      <main style={{ paddingBottom: '40px' }}>
         <Home onEdit={openEdit} />
       </main>
 
-      {/* Bottom Nav */}
-      <nav style={{ ...styles.nav, background: settings.darkMode ? '#2a2a2a' : '#fff', borderColor: settings.darkMode ? '#333' : '#eee' }}>
-        <button style={{ ...styles.navBtn, color: '#1976D2', fontWeight: 'bold' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>账户</button>
-        <button style={styles.addBtn} onClick={openAdd}>+</button>
-        <button style={{ ...styles.navBtn, color: '#666' }} onClick={() => setShowLogs(true)}>日志</button>
-      </nav>
-
+      
       {/* 右侧日志弹窗 */}
       {showLogs && (
         <div style={styles.layerMask} onClick={e => e.target === e.currentTarget && setShowLogs(false)}>

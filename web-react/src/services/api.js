@@ -1,4 +1,4 @@
-const API_BASE = 'https://untitled-node-6gyb.onrender.com/api';
+const API_BASE = '/api';
 
 export async function queryQuota(username, token) {
   const res = await fetch(`${API_BASE}/quota`, {

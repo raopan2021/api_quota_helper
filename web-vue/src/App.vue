@@ -15,12 +15,6 @@
       <Home @edit="openEdit" />
     </main>
 
-    <nav>
-      <button @click="scrollToTop" :class="{ active: true }">账户</button>
-      <button class="add-btn" @click="openAdd">+</button>
-      <button @click="showLogs = true">日志</button>
-    </nav>
-
     <!-- 右侧日志弹窗 -->
     <div v-if="showLogs" class="layer-mask" @click.self="showLogs = false">
       <div class="layer-panel" :class="{ dark: settings.darkMode }">
@@ -229,10 +223,6 @@ async function refreshAll() {
   refreshing.value = false;
 }
 
-function scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
 function startTimer() {
   clearInterval(refreshTimer);
   refreshTimer = setInterval(refreshAll, intervalSec * 1000);
@@ -274,31 +264,19 @@ header {
 }
 .app.dark header { background: #2a2a2a; border-color: #333; }
 .header-btns { display: flex; gap: 8px; }
-.header-btns button, nav button {
+.header-btns button {
   background: none; border: 1px solid #ddd; border-radius: 6px;
   padding: 4px 10px; cursor: pointer; font-size: 13px;
 }
-.app.dark .header-btns button, .app.dark nav button { border-color: #444; color: #e0e0e0; }
+.app.dark .header-btns button { border-color: #444; color: #e0e0e0; }
 .header-btns button:active { background: #eee; }
-.app.dark .header-btns button:active, .app.dark nav button:active { background: #333; }
+.app.dark .header-btns button:active { background: #333; }
 
 /* 刷新按钮旋转动画 */
 .spinning { display: inline-block; animation: spin 1s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-main { padding-bottom: 80px; }
-
-nav {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: #fff; border-top: 1px solid #eee;
-  display: flex; justify-content: space-around; align-items: center;
-  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
-  z-index: 100;
-}
-.app.dark nav { background: #2a2a2a; border-color: #333; }
-nav button { border: none; background: none; padding: 8px 16px; cursor: pointer; border-radius: 8px; font-size: 14px; color: #666; }
-nav button.active { color: #1976D2; font-weight: bold; }
-.add-btn { background: #1976D2 !important; color: #fff !important; border-radius: 50% !important; width: 48px; height: 48px; font-size: 24px !important; padding: 0 !important; display: flex; align-items: center; justify-content: center; margin-top: -20px; box-shadow: 0 4px 12px rgba(25,118,210,0.4); }
+main { padding-bottom: 40px; }
 
 /* 右侧滑出弹窗 */
 .layer-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 200; }
