@@ -1,18 +1,18 @@
 <template>
-  <div :class="['app', { dark: settings.darkMode }]">
-    <header>
-      <span>API 额度助手</span>
-      <div class="header-btns">
-        <button class="primary" @click="openAdd">+ 添加</button>
-        <button @click="showLogs = true">日志</button>
-        <button @click="showSettings = true">设置</button>
-        <button @click="refreshAll" :disabled="refreshing">
+  <div :class="['app', { dark: settings.darkMode }]" class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-200">
+    <header class="sticky top-0 z-100 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between shadow-sm">
+      <span class="font-bold text-base truncate">API 额度助手</span>
+      <div class="header-btns flex gap-2 flex-shrink-0">
+        <button class="primary px-3 py-1 text-sm rounded-md border border-blue-500 bg-blue-500 text-white hover:bg-blue-600 transition-colors" @click="openAdd">+ 添加</button>
+        <button class="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" @click="showLogs = true">日志</button>
+        <button class="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" @click="showSettings = true">设置</button>
+        <button class="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" @click="refreshAll" :disabled="refreshing">
           <span :class="{ spinning: refreshing }">⟳</span>
         </button>
       </div>
     </header>
 
-    <main>
+    <main class="pb-4">
       <Home @edit="openEdit" />
     </main>
 

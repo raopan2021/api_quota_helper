@@ -9,11 +9,44 @@
 
     <div class="settings-section">
       <div class="settings-title">刷新间隔</div>
-      <div class="btn-row">
-        <button v-for="opt in intervalOptions" :key="opt.value" class="btn" :class="{ active: settings.refreshIntervalSeconds === opt.value }" @click="setInterval(opt.value)">
-          {{ opt.label }}
-        </button>
+      <div class="hms-row">
+        <div class="hms-unit">
+          <input
+            class="hms-input"
+            type="number"
+            min="0"
+            max="23"
+            :value="hms.h"
+            @change="e => updateField('h', e.target.value)"
+          />
+          <span class="hms-label">时</span>
+        </div>
+        <div class="hms-unit">
+          <input
+            class="hms-input"
+            type="number"
+            min="0"
+            max="59"
+            :value="hms.m"
+            @change="e => updateField('m', e.target.value)"
+          />
+          <span class="hms-label">分</span>
+        </div>
+        <div class="hms-unit">
+          <input
+            class="hms-input"
+            type="number"
+            min="0"
+            max="59"
+            :value="hms.s"
+            @change="e => updateField('s', e.target.value)"
+          />
+          <span class="hms-label">秒</span>
+        </div>
       </div>
+      <p style="font-size:12px;color:#888;margin-top:6px;padding-left:4px;">
+        当前: {{ settings.refreshIntervalSeconds }} 秒
+      </p>
     </div>
 
     <div class="settings-section">
@@ -32,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSettings } from '../stores/settings.js';
 import { checkUpdate as apiCheckUpdate } from '../services/api.js';
 
@@ -46,8 +79,26 @@ function toggleDark() {
   setDarkMode(!settings.value.darkMode);
 }
 
-function setInterval(v) {
-  setRefreshInterval(v);
+function toHMS(seconds) {
+  const s = seconds || 300;
+  return {
+    h: Math.floor(s / 3600),
+    m: Math.floor((s % 3600) / 60),
+    s: s % 60,
+  };
+}
+
+function toSeconds(h, m, s) {
+  return h * 3600 + m * 60 + s;
+}
+
+const hms = computed(() => toHMS(settings.value.refreshIntervalSeconds));
+
+function updateField(field, val) {
+  const n = parseInt(val, 10) || 0;
+  const cur = toHMS(settings.value.refreshIntervalSeconds);
+  const next = toSeconds(field === 'h' ? n : cur.h, field === 'm' ? n : cur.m, field === 's' ? n : cur.s);
+  setRefreshInterval(next);
 }
 
 async function checkUpdate() {
@@ -64,11 +115,11 @@ async function checkUpdate() {
     updateInfo.value = result;
   }
 }
-
-const intervalOptions = [
-  { label: '30秒', value: 30 },
-  { label: '1分钟', value: 60 },
-  { label: '5分钟', value: 300 },
-  { label: '10分钟', value: 600 },
-];
 </script>
+
+<style scoped>
+.hms-row { display: flex; gap: 12px; align-items: center; padding: 0 4px; }
+.hms-unit { display: flex; align-items: center; gap: 4px; }
+.hms-input { width: 52px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; text-align: center; background: #fafafa; }
+.hms-label { font-size: 13px; color: #666; }
+</style>

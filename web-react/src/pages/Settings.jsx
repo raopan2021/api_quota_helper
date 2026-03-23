@@ -2,12 +2,16 @@ import { useState } from 'react';
 import { useSettings } from '../stores/useSettings.jsx';
 import { checkUpdate } from '../services/api.js';
 
-const INTERVALS = [
-  { label: '30秒', value: 30 },
-  { label: '1分钟', value: 60 },
-  { label: '5分钟', value: 300 },
-  { label: '10分钟', value: 600 },
-];
+function toHMS(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return { h, m, s };
+}
+
+function toSeconds(h, m, s) {
+  return h * 3600 + m * 60 + s;
+}
 
 export default function Settings() {
   const { settings, save } = useSettings();
@@ -15,6 +19,14 @@ export default function Settings() {
   const [updateError, setUpdateError] = useState('');
   const [isLatest, setIsLatest] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
+
+  const hms = toHMS(settings.refreshIntervalSeconds || 300);
+
+  function updateField(field, val) {
+    const n = parseInt(val, 10) || 0;
+    const next = toSeconds(field === 'h' ? n : hms.h, field === 'm' ? n : hms.m, field === 's' ? n : hms.s);
+    save({ refreshIntervalSeconds: next });
+  }
 
   async function handleCheckUpdate() {
     setChecking(true);
@@ -42,13 +54,44 @@ export default function Settings() {
 
       <div style={styles.section}>
         <div style={styles.sectionTitle}>刷新间隔</div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '0 16px 16px' }}>
-          {INTERVALS.map(opt => (
-            <button key={opt.value} style={{ ...styles.btn, ...(settings.refreshIntervalSeconds === opt.value ? styles.btnActive : {}) }} onClick={() => save({ refreshIntervalSeconds: opt.value })}>
-              {opt.label}
-            </button>
-          ))}
+        <div style={styles.hmsRow}>
+          <div style={styles.hmsUnit}>
+            <input
+              style={styles.hmsInput}
+              type="number"
+              min="0"
+              max="23"
+              value={hms.h}
+              onChange={e => updateField('h', e.target.value)}
+            />
+            <span style={styles.hmsLabel}>时</span>
+          </div>
+          <div style={styles.hmsUnit}>
+            <input
+              style={styles.hmsInput}
+              type="number"
+              min="0"
+              max="59"
+              value={hms.m}
+              onChange={e => updateField('m', e.target.value)}
+            />
+            <span style={styles.hmsLabel}>分</span>
+          </div>
+          <div style={styles.hmsUnit}>
+            <input
+              style={styles.hmsInput}
+              type="number"
+              min="0"
+              max="59"
+              value={hms.s}
+              onChange={e => updateField('s', e.target.value)}
+            />
+            <span style={styles.hmsLabel}>秒</span>
+          </div>
         </div>
+        <p style={{ fontSize: '12px', color: '#888', marginTop: '6px', paddingLeft: '4px' }}>
+          当前: {settings.refreshIntervalSeconds} 秒
+        </p>
       </div>
 
       <div style={styles.section}>
@@ -78,5 +121,8 @@ const styles = {
   toggle: { width: '44px', height: '24px', borderRadius: '12px', background: '#ccc', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' },
   toggleOn: { background: '#1976D2' },
   btn: { padding: '8px 14px', borderRadius: '8px', border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontSize: '13px' },
-  btnActive: { background: '#1976D2', color: '#fff', borderColor: '#1976D2' },
+  hmsRow: { display: 'flex', gap: '12px', alignItems: 'center', padding: '0 4px' },
+  hmsUnit: { display: 'flex', alignItems: 'center', gap: '4px' },
+  hmsInput: { width: '52px', padding: '6px 8px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '16px', textAlign: 'center', background: '#fafafa' },
+  hmsLabel: { fontSize: '13px', color: '#666' },
 };

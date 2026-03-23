@@ -91,15 +91,15 @@ function AppContent() {
   }
 
   return (
-    <div style={{ ...styles.app, background: settings.darkMode ? '#1a1a1a' : '#f5f5f5', color: settings.darkMode ? '#e0e0e0' : '#333' }}>
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-100 transition-colors duration-200" style={settings.darkMode ? {} : {}}>
       {/* Header */}
-      <header style={{ ...styles.header, background: settings.darkMode ? '#2a2a2a' : '#fff', borderColor: settings.darkMode ? '#333' : '#eee' }}>
-        <span style={{ fontWeight: 'bold', fontSize: '16px' }}>API 额度助手</span>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button style={{...styles.headerBtn, background: '#1976D2', color: '#fff', borderColor: '#1976D2'}} onClick={openAdd}>+ 添加</button>
-          <button style={styles.headerBtn} onClick={() => setShowLogs(true)}>日志</button>
-          <button style={styles.headerBtn} onClick={() => setShowSettings(true)}>设置</button>
-          <button style={styles.headerBtn} onClick={handleRefresh} disabled={refreshing}>
+      <header className="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between shadow-sm">
+        <span className="font-bold text-base truncate">API 额度助手</span>
+        <div className="flex gap-2 flex-shrink-0">
+          <button className="px-3 py-1 text-sm rounded-md border border-blue-500 bg-blue-500 text-white hover:bg-blue-600 transition-colors" onClick={openAdd}>+ 添加</button>
+          <button className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onClick={() => setShowLogs(true)}>日志</button>
+          <button className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onClick={() => setShowSettings(true)}>设置</button>
+          <button className="px-3 py-1 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" onClick={handleRefresh} disabled={refreshing}>
             <span style={{ display: 'inline-block', animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>⟳</span>
           </button>
         </div>
