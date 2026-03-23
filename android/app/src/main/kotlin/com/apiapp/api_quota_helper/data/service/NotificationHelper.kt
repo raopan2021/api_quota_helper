@@ -44,19 +44,19 @@ class NotificationHelper(private val context: Context) {
 
     /**
      * 更新通知栏显示额度信息
-     * @param accounts 要显示的账户额度信息列表
+     * @param messages 要显示的信息列表
      */
-    fun updateQuotaNotification(accounts: List<Pair<String, String>>) {
+    fun updateQuotaNotification(messages: List<String>) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // 构建通知内容
         val title = "API 额度助手"
-        val content = if (accounts.isEmpty()) {
+        val content = if (messages.isEmpty()) {
             "暂无账户"
-        } else if (accounts.size == 1) {
-            "${accounts[0].first}: ${accounts[0].second}"
+        } else if (messages.size == 1) {
+            messages[0]
         } else {
-            "${accounts[0].first}: ${accounts[0].second} 等${accounts.size}个账户"
+            "${messages[0]} 等${messages.size}个账户"
         }
 
         // 创建点击意图（点击打开应用）
