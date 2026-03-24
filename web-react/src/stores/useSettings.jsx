@@ -3,7 +3,8 @@ import { createContext, useContext, useState, useCallback } from 'react';
 const SettingsContext = createContext(null);
 const STORAGE_KEY = 'api_quota_settings';
 
-const defaults = { darkMode: false, refreshIntervalSeconds: 300 };
+// cardSize: 'small' | 'medium' | 'large'
+const defaults = { darkMode: false, refreshIntervalSeconds: 300, cardSize: 'medium' };
 
 function loadSettings() {
   try { return { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') }; }

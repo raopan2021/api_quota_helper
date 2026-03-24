@@ -1,51 +1,74 @@
 <template>
-  <div>
+  <div :class="['settings-wrap', { dark: settings.darkMode }]">
+    <!-- 显示设置 -->
     <div class="settings-section">
-      <div class="toggle-row">
+      <div class="settings-title">显示</div>
+
+      <!-- 卡片大小 -->
+      <div class="setting-row">
+        <span>卡片大小</span>
+        <div class="picker-group">
+          <button
+            v-for="size in ['small', 'medium', 'large']"
+            :key="size"
+            :class="{ active: settings.cardSize === size }"
+            @click="setCardSize(size)"
+          >
+            {{ size === 'small' ? '小' : size === 'medium' ? '中' : '大' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 深色模式 -->
+      <div class="setting-row">
         <span>深色模式</span>
-        <div class="toggle" :class="{ on: settings.darkMode }" @click="toggleDark" />
-      </div>
-    </div>
-
-    <div class="settings-section">
-      <div class="settings-title">刷新间隔</div>
-      <div style="padding: 0 16px 16px">
-        <van-field
-          readonly
-          clickable
-          :model-value="displayText"
-          placeholder="选择刷新间隔"
-          @click="showPicker = true"
-          input-align="left"
-        />
-        <p style="font-size:12px;color:#888;margin-top:8px;">
-          当前: {{ displayText }}
-        </p>
-      </div>
-
-      <van-popup v-model:show="showPicker" position="bottom" round>
-        <van-picker-group
-          :tabs="['选择时间']"
-          @cancel="showPicker = false"
+        <div
+          class="toggle"
+          :class="{ on: settings.darkMode }"
+          @click="setDarkMode(!settings.darkMode)"
         >
-          <van-time-picker
-            v-model="currentTime"
-            :columns-type="['hour', 'minute', 'second']"
-            @confirm="onTimeConfirm"
-          />
-        </van-picker-group>
-      </van-popup>
+          <div class="toggle-knob" />
+        </div>
+      </div>
     </div>
 
+    <!-- 刷新间隔 -->
     <div class="settings-section">
-      <div class="settings-title">版本更新</div>
+      <div class="settings-title">定时刷新</div>
+      <div class="interval-picker">
+        <div class="interval-unit">
+          <div class="interval-label">时</div>
+          <select v-model.number="hours" @change="updateInterval">
+            <option v-for="h in 24" :key="h-1" :value="h-1">{{ String(h-1).padStart(2, '0') }}</option>
+          </select>
+        </div>
+        <span class="interval-sep">:</span>
+        <div class="interval-unit">
+          <div class="interval-label">分</div>
+          <select v-model.number="minutes" @change="updateInterval">
+            <option v-for="m in 60" :key="m-1" :value="m-1">{{ String(m-1).padStart(2, '0') }}</option>
+          </select>
+        </div>
+        <span class="interval-sep">:</span>
+        <div class="interval-unit">
+          <div class="interval-label">秒</div>
+          <select v-model.number="seconds" @change="updateInterval">
+            <option v-for="s in 60" :key="s-1" :value="s-1">{{ String(s-1).padStart(2, '0') }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 关于 -->
+    <div class="settings-section">
+      <div class="settings-title">关于</div>
       <button class="btn" @click="checkUpdate" :disabled="checking">
         {{ checking ? '检查中...' : '检查更新' }}
       </button>
-      <p v-if="updateError" style="color:#F44336;font-size:13px;margin-top:8px;">{{ updateError }}</p>
-      <div v-if="updateInfo" style="margin-top:8px;">
-        <p style="font-size:13px;">发现新版本: <strong>{{ updateInfo.version }}</strong></p>
-        <a :href="updateInfo.downloadUrl" target="_blank" style="color:#1989fa;font-size:13px;">点击下载</a>
+      <p v-if="updateError" class="error-msg">{{ updateError }}</p>
+      <div v-if="updateInfo" class="update-info">
+        <p>发现新版本: <strong>{{ updateInfo.version }}</strong></p>
+        <a :href="updateInfo.downloadUrl" target="_blank" class="download-link">点击下载</a>
       </div>
     </div>
   </div>
@@ -55,17 +78,12 @@
 import { ref, computed } from 'vue';
 import { useSettings } from '../stores/settings.js';
 import { checkUpdate as apiCheckUpdate } from '../services/api.js';
-import { showToast } from 'vant';
 
-const { settings, setDarkMode, setRefreshInterval } = useSettings();
+const { settings, setDarkMode, setRefreshInterval, setCardSize } = useSettings();
+
 const checking = ref(false);
 const updateError = ref('');
 const updateInfo = ref(null);
-const showPicker = ref(false);
-
-function toggleDark() {
-  setDarkMode(!settings.value.darkMode);
-}
 
 function parseSeconds(secs) {
   const total = secs || 300;
@@ -76,28 +94,16 @@ function parseSeconds(secs) {
   };
 }
 
-const currentTime = ref(parseSeconds(settings.value.refreshIntervalSeconds));
+const { hour, minute, second } = parseSeconds(settings.value.refreshIntervalSeconds);
+const hours = ref(hour);
+const minutes = ref(minute);
+const seconds = ref(second);
 
-function formatTime(secs) {
-  const { hour: h, minute: m, second: s } = parseSeconds(secs);
-  const parts = [];
-  if (h > 0) parts.push(`${h} 小时`);
-  if (m > 0) parts.push(`${m} 分钟`);
-  if (s > 0 || parts.length === 0) parts.push(`${s} 秒`);
-  return parts.join(' ');
-}
-
-const displayText = computed(() => formatTime(settings.value.refreshIntervalSeconds || 300));
-
-function onTimeConfirm(values) {
-  // values 是字符串数组 [hourStr, minuteStr, secondStr]
-  const hour = parseInt(values[0], 10) || 0;
-  const minute = parseInt(values[1], 10) || 0;
-  const second = parseInt(values[2], 10) || 0;
-  const total = hour * 3600 + minute * 60 + second;
-  setRefreshInterval(total);
-  showPicker.value = false;
-  showToast({ message: `已设置为 ${formatTime(total)}`, position: 'top' });
+function updateInterval() {
+  const total = hours.value * 3600 + minutes.value * 60 + seconds.value;
+  if (total > 0) {
+    setRefreshInterval(total);
+  }
 }
 
 async function checkUpdate() {
@@ -115,12 +121,156 @@ async function checkUpdate() {
 </script>
 
 <style scoped>
-.settings-section { padding: 0 16px 16px; border-bottom: 1px solid #eee; }
-.settings-title { font-weight: bold; margin-bottom: 12px; font-size: 15px; }
-.toggle-row { display: flex; justify-content: space-between; align-items: center; }
-.toggle { width: 44px; height: 24px; border-radius: 12px; background: #ccc; position: relative; cursor: pointer; transition: background 0.2s; }
-.toggle.on { background: #1989fa; }
-.toggle::after { content: ''; position: absolute; width: 20px; height: 20px; background: #fff; border-radius: 50%; top: 2px; left: 2px; transition: left 0.2s; }
-.toggle.on::after { left: 22px; }
-.btn { padding: 8px 14px; border-radius: 8px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; font-size: 13px; }
+.settings-wrap {
+  padding: 16px 0;
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+.settings-wrap.dark {
+  background: #1a1a1a;
+}
+.settings-section {
+  max-width: 480px;
+  margin: 0 auto 12px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+}
+.dark .settings-section {
+  background: #2a2a2a;
+}
+.settings-title {
+  font-weight: bold;
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.dark .setting-row {
+  border-color: #333;
+}
+.picker-group {
+  display: flex;
+  gap: 4px;
+}
+.picker-group button {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+}
+.dark .picker-group button {
+  border-color: #444;
+  color: #e0e0e0;
+}
+.picker-group button.active {
+  background: #1677ff;
+  border-color: #1677ff;
+  color: #fff;
+}
+.toggle {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: #ccc;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle.on {
+  background: #1677ff;
+}
+.toggle-knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle.on .toggle-knob {
+  left: 22px;
+}
+.interval-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+.interval-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.interval-label {
+  font-size: 12px;
+  margin-bottom: 4px;
+  color: #888;
+}
+.dark .interval-label {
+  color: #888;
+}
+.interval-sep {
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: -16px;
+}
+.dark .interval-sep {
+  color: #e0e0e0;
+}
+select {
+  width: 70px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #fff;
+}
+.dark select {
+  border-color: #444;
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+}
+.dark .btn {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+.error-msg {
+  color: #F44336;
+  font-size: 13px;
+  margin-top: 8px;
+}
+.update-info {
+  margin-top: 8px;
+  font-size: 13px;
+}
+.download-link {
+  color: #1677ff;
+  font-size: 13px;
+  display: block;
+  margin-top: 4px;
+}
 </style>

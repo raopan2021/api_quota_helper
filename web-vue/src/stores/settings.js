@@ -8,7 +8,7 @@ function load() {
   } catch { return {}; }
 }
 
-const defaults = { darkMode: false, refreshIntervalSeconds: 300 };
+const defaults = { darkMode: false, refreshIntervalSeconds: 300, cardSize: 'medium' };
 const settings = ref({ ...defaults, ...load() });
 
 watch(settings, (s) => {
@@ -19,6 +19,7 @@ export function useSettings() {
   return {
     settings,
     setDarkMode(v) { settings.value.darkMode = v; },
-    setRefreshInterval(v) { settings.value.refreshIntervalSeconds = v; }
+    setRefreshInterval(v) { settings.value.refreshIntervalSeconds = v; },
+    setCardSize(v) { settings.value.cardSize = v; },
   };
 }

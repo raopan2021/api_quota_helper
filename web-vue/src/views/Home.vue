@@ -6,40 +6,83 @@
     </div>
 
     <div v-for="acc in accounts" :key="acc.id" class="card-wrap">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-username">{{ acc.username }}</span>
-          <div class="card-actions">
-            <button @click="refreshAccount(acc)">刷新</button>
+      <div class="card" :class="settings.cardSize" :style="cardStyle(acc)">
+        <!-- Status bar -->
+        <div class="status-bar" :style="{ background: quotaColor(acc), height: refreshing ? '6px' : '4px' }" />
+
+        <div class="card-content">
+          <!-- Header: avatar + username + percent badge -->
+          <div class="card-header-row">
+            <div class="user-info">
+              <div class="avatar" :style="{ background: quotaColor(acc) + '20', color: quotaColor(acc) }">
+                {{ acc.username.charAt(0).toUpperCase() }}
+              </div>
+              <div>
+                <div class="username">{{ acc.username }}</div>
+                <div class="plan-info" v-if="data[acc.id]?.planName">
+                  {{ data[acc.id].planName }}
+                  <span v-if="data[acc.id]?.days_remaining != null" :style="{ color: daysColor(acc) }">
+                    · 剩余 {{ data[acc.id].days_remaining }} 天
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="data[acc.id]" class="percent-badge" :style="{ background: quotaColor(acc) + '15', color: quotaColor(acc) }">
+              {{ percent(acc).toFixed(1) }}%
+            </div>
+            <div v-else-if="data[acc.id]?.loading" class="percent-badge loading-badge">
+              加载中
+            </div>
+          </div>
+
+          <!-- Error -->
+          <div v-if="data[acc.id]?.error" class="error-msg">{{ data[acc.id].error }}</div>
+
+          <!-- Quota info -->
+          <template v-else-if="data[acc.id]">
+            <div class="quota-row">
+              <div class="quota-item">
+                <div class="quota-label">已用额度</div>
+                <div class="quota-value">{{ data[acc.id].amountUsed?.toFixed(1) }}</div>
+              </div>
+              <div class="quota-item">
+                <div class="quota-label">总额度</div>
+                <div class="quota-value">{{ data[acc.id].amount?.toFixed(1) }}</div>
+              </div>
+              <div class="quota-item text-right">
+                <div class="quota-label">剩余额度</div>
+                <div class="quota-value" :style="{ color: quotaColor(acc) }">{{ data[acc.id].remaining?.toFixed(1) }}</div>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="progress-track">
+              <div class="progress-fill" :style="{ width: Math.min(100, percent(acc)) + '%', background: quotaColor(acc) }" />
+            </div>
+
+            <!-- Countdown to reset -->
+            <div class="countdown-row" v-if="data[acc.id]?.nextResetTime">
+              距重置: <span class="countdown-value">{{ getCountdown(data[acc.id].nextResetTime) }}</span>
+            </div>
+          </template>
+
+          <!-- Actions -->
+          <div class="actions-row">
+            <button @click="refreshAccount(acc)" :disabled="refreshing">
+              {{ refreshing ? '刷新中' : '刷新' }}
+            </button>
             <button @click="$emit('edit', acc)">编辑</button>
-            <button @click="deleteAccount(acc.id)">删除</button>
+            <button @click="deleteAccount(acc.id)" class="delete-btn">删除</button>
           </div>
         </div>
-
-        <div v-if="data[acc.id]?.loading" class="loading" />
-
-        <div v-else-if="data[acc.id]?.error" style="color:#F44336;font-size:13px;margin-top:8px;">
-          {{ data[acc.id].error }}
-        </div>
-
-        <template v-else-if="data[acc.id]">
-          <p style="font-size:13px;opacity:0.7">{{ data[acc.id].planName }}</p>
-          <div class="progress-bar">
-            <div class="progress-fill" :class="percentClass(data[acc.id])" :style="{ width: percent(data[acc.id]) + '%' }" />
-          </div>
-          <div class="card-meta">
-            <span>已用: {{ data[acc.id].amountUsed?.toFixed(1) }}</span>
-            <span>剩余: {{ data[acc.id].remaining?.toFixed(1) }}</span>
-          </div>
-          <p v-if="data[acc.id].nextResetTime" class="countdown">重置: {{ data[acc.id].nextResetTime }}</p>
-        </template>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { inject } from 'vue';
+import { inject, ref, onMounted, onUnmounted } from 'vue';
 import { useSettings } from '../stores/settings.js';
 
 defineEmits(['edit']);
@@ -51,23 +94,66 @@ const refreshAll = inject('refreshAll');
 const deleteAccount = inject('deleteAccount');
 
 const data = accountData;
+const refreshing = ref(false);
+const tick = ref(0);
+let timer = null;
 
-function percent(d) {
+onMounted(() => {
+  timer = setInterval(() => { tick.value++; }, 1000);
+});
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
+
+function refreshAccount(acc) {
+  refreshing.value = true;
+  refreshAll().finally(() => {
+    setTimeout(() => { refreshing.value = false; }, 500);
+  });
+}
+
+function percent(acc) {
+  const d = data[acc.id];
   if (!d || !d.amount) return 0;
   return Math.min(100, (d.amountUsed / d.amount) * 100);
 }
 
-function percentClass(d) {
-  const p = percent(d);
-  if (p > 80) return 'danger';
-  if (p > 50) return 'warning';
-  return '';
+function quotaColor(acc) {
+  const p = percent(acc);
+  if (refreshing.value) return '#9E9E9E';
+  if (p > 50) return '#4CAF50';
+  if (p > 20) return '#FFC107';
+  return '#F44336';
 }
 
-function refreshAccount(acc) {
-  const key = acc.id;
-  data.value[key] = { ...(data.value[key] || {}), loading: true };
-  refreshAll();
+function daysColor(acc) {
+  const d = data[acc.id];
+  if (!d) return '#9E9E9E';
+  if (d.days_remaining > 10) return '#4CAF50';
+  if (d.days_remaining > 3) return '#FFC107';
+  return '#F44336';
+}
+
+function cardStyle(acc) {
+  return { '--quota-color': quotaColor(acc) };
+}
+
+function getCountdown(resetTime) {
+  // Access tick to make reactive
+  const _ = tick.value;
+  if (!resetTime) return '';
+  try {
+    const sdf = new Date(resetTime.replace(/\//g, '/'));
+    const diff = sdf.getTime() - Date.now();
+    if (diff <= 0) return '已重置';
+    const h = Math.floor(diff / (1000 * 60 * 60));
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((diff % (1000 * 60)) / 1000);
+    return `${h}小时${m}分${s}秒`;
+  } catch {
+    return '';
+  }
 }
 </script>
 
@@ -88,36 +174,93 @@ function refreshAccount(acc) {
 .card {
   background: #fff;
   border-radius: 12px;
-  padding: 16px;
   margin-bottom: 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  overflow: hidden;
 }
-.dark .card {
-  background: #2a2a2a;
+.card.small { padding: 12px; }
+.card.medium { padding: 16px; }
+.card.large { padding: 20px; }
+.dark .card { background: #2a2a2a; }
+.status-bar {
+  margin: -12px -16px 0 -16px;
+  height: 4px;
+  transition: height 0.2s;
 }
-.card-header {
+.card.small .status-bar { margin: -12px -12px 0 -12px; }
+.card.large .status-bar { margin: -20px -20px 0 -20px; }
+.card-content { padding: 0 4px; }
+.card-header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  margin-top: 12px;
 }
-.dark .card-header {
-  border-color: #333;
+.user-info { display: flex; align-items: center; gap: 12px; }
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 18px;
 }
-.card-username { font-weight: bold; font-size: 16px; }
-.card-actions { display: flex; gap: 6px; }
-.card-actions button { background: none; border: 1px solid #ddd; border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
-.dark .card-actions button { border-color: #444; color: #e0e0e0; }
-.loading { height: 3px; background: #eee; border-radius: 2px; margin: 8px 0; overflow: hidden; }
-.dark .loading { background: #333; }
-.progress-bar { height: 6px; background: #eee; border-radius: 3px; margin: 8px 0; overflow: hidden; }
-.dark .progress-bar { background: #333; }
-.progress-fill { height: 100%; background: #4CAF50; border-radius: 3px; transition: width 0.3s; }
-.progress-fill.warning { background: #FF9800; }
-.progress-fill.danger { background: #F44336; }
-.card-meta { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-top: 4px; }
-.countdown { color: #1976D2; font-size: 12px; margin-top: 4px; }
+.username { font-weight: bold; font-size: 16px; }
+.plan-info { font-size: 12px; color: #888; margin-top: 2px; }
+.percent-badge {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 15px;
+}
+.loading-badge { background: #9E9E9E15; color: #9E9E9E; font-size: 12px; font-weight: normal; }
+.error-msg { color: #F44336; font-size: 13px; margin-top: 8px; }
+.quota-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-top: 12px;
+}
+.quota-item { text-align: left; }
+.quota-item.text-right { text-align: right; }
+.quota-label { color: #888; font-size: 12px; }
+.quota-value { font-weight: bold; margin-top: 2px; }
+.progress-track {
+  height: 8px;
+  background: #eee;
+  border-radius: 4px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.dark .progress-track { background: #333; }
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+.countdown-row {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+}
+.countdown-value { color: #1976D2; }
+.actions-row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+.actions-row button {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.dark .actions-row button { border-color: #444; color: #e0e0e0; }
+.actions-row .delete-btn { color: #F44336; }
 .empty { text-align: center; padding: 60px 20px; color: #999; font-size: 15px; }
 </style>
