@@ -75,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useSettings } from '../stores/settings.js';
 import { checkUpdate as apiCheckUpdate } from '../services/api.js';
 
