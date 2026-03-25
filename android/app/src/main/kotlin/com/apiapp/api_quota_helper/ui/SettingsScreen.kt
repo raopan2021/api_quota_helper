@@ -142,7 +142,8 @@ fun SettingsScreen(
     onDarkModeChange: (Boolean) -> Unit,
     onRefreshIntervalChange: (Int) -> Unit,
     onBack: () -> Unit,
-    onShowLogs: () -> Unit
+    onShowLogs: () -> Unit,
+    onNavigateToInstallGuide: () -> Unit
 ) {
     val context = LocalContext.current
     var intervalHours by remember { mutableIntStateOf(settings.refreshIntervalSeconds / 3600) }
@@ -478,6 +479,18 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("作者: raopan")
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // 安装指引按钮
+            OutlinedButton(
+                onClick = onNavigateToInstallGuide,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(painter = Icons2.Warning(), contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("安装指引")
             }
 
             Spacer(modifier = Modifier.height(12.dp))

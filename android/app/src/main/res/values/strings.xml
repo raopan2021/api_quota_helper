@@ -1,4 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">API 额度助手</string>
+    <string name="install_guide">安装指引</string>
+    <string name="install_guide_title">安装说明</string>
+    <string name="install_guide_desc">由于本应用使用自签名证书，安装时会显示安全警告，这是正常现象。</string>
+    <string name="install_step1">安装指引</string>
+    <string name="install_step2">在安装界面，点击「更多信息」</string>
+    <string name="install_step3">点击「仍要安装」即可</string>
+    <string name="install_notice">隐私声明</string>
+    <string name="install_notice_content">本应用仅在本地存储您的 API 账户信息，不会收集或上传任何隐私数据。</string>
+    <string name="settings_install_guide">安装指引</string>
+    <string name="settings_about">关于</string>
+    <string name="settings_version">版本</string>
 </resources>
