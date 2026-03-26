@@ -11,7 +11,17 @@
 - **定时刷新** - 支持设置自动刷新间隔（默认 5 分钟）
 - **深色模式** - 支持浅色/深色主题切换
 
-## 技术栈
+## 隐私说明
+
+所有账号数据（用户名、Token）仅存储在本地设备，不会传输到任何第三方服务器。
+
+## License
+
+MIT
+
+## 安卓端
+
+### 技术栈
 
 | 分类 | 技术 |
 |------|------|
@@ -22,11 +32,14 @@
 | 序列化 | Kotlinx Serialization |
 | 构建 | Gradle (Kotlin DSL) |
 
-## 截图
+### 截图
 
-> 暂无
-
-## 构建
+<div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
+  <img alt="截图" src="./截图/1.jpg">
+  <img alt="截图" src="./截图/2.jpg">
+  <img alt="截图" src="./截图/3.jpg">
+  <img alt="截图" src="./截图/4.jpg">
+</div>
 
 ### 环境要求
 
@@ -55,16 +68,16 @@ export KEY_ALIAS=your_key_alias
 export KEY_PASSWORD=your_key_password
 ```
 
-## CI/CD
+### CI/CD
 
 项目使用 GitHub Actions 自动构建 Android Release APK。
 
-### 触发条件
+#### 触发条件
 
 - master 分支有代码推送时自动构建
 - 可通过 GitHub Web 界面手动触发
 
-### 工作流说明
+#### 工作流说明
 
 1. `extract-version` - 从 `build.gradle.kts` 提取版本号
 2. `check-tag` - 检查是否已存在对应 Tag，避免重复发布
@@ -72,7 +85,7 @@ export KEY_PASSWORD=your_key_password
 4. `create-tag` - 创建并推送 Git Tag
 5. `release` - 创建 GitHub Release
 
-### Tag 管理
+#### Tag 管理
 
 ```bash
 # 查看远程 Tag
@@ -84,11 +97,3 @@ git tag | grep 'v1.2' | while read tag; do
   git tag -d "$tag"
 done
 ```
-
-## 隐私说明
-
-所有账号数据（用户名、Token）仅存储在本地设备，不会传输到任何第三方服务器。
-
-## License
-
-MIT
