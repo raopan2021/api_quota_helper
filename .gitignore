@@ -8,9 +8,6 @@ android/local.properties
 windows/bin/
 windows/obj/
 
-# 保留 GitHub Actions workflow
-!.github/workflows/
-
 .DS_Store
 
 web-vue/package-lock.json
