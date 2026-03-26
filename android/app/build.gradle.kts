@@ -15,7 +15,7 @@ android {
         minSdk = 26
         targetSdk = 35
         // versionName为唯一数据源，versionCode自动计算（语义化版本：major*10000 + minor*100 + patch）
-        val ver = "1.2.9"
+        val ver = "1.1.0"
         val parts = ver.split(".")
         versionCode = parts[0].toInt() * 10000 + parts[1].toInt() * 100 + parts[2].toInt()
         versionName = ver
@@ -77,11 +77,11 @@ android {
         }
     }
 
-    // APK 输出文件名：api-quota-helper-vX.X.XX.apk
+    // APK 输出文件名：ApiQuotaHelper--arm64-v8a--vX.X.XX.apk
     applicationVariants.configureEach {
         outputs.all {
             val variantOutput = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            variantOutput.outputFileName = "api-quota-helper-${versionName}.apk"
+            variantOutput.outputFileName = "ApiQuotaHelper--arm64-v8a--v${versionName}.apk"
         }
     }
 }
