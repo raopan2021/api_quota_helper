@@ -35,10 +35,10 @@ MIT
 ### 截图
 
 <div style="width: 100%; display: flex; justify-content: space-between; align-items: flex-start;">
-  <img alt="截图" src="./截图/1.jpg">
-  <img alt="截图" src="./截图/2.jpg">
-  <img alt="截图" src="./截图/3.jpg">
-  <img alt="截图" src="./截图/4.jpg">
+  <img style="flex: 1;" alt="截图" src="./截图/1.jpg">
+  <img style="flex: 1;" alt="截图" src="./截图/2.jpg">
+  <img style="flex: 1;" alt="截图" src="./截图/3.jpg">
+  <img style="flex: 1;" alt="截图" src="./截图/4.jpg">
 </div>
 
 ### 环境要求
