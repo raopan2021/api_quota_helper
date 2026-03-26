@@ -175,7 +175,7 @@ jobs:
         with:
           name: release-apk-${{ needs.extract-version.outputs.version }}
           # APK 输出路径（Gradle 默认输出位置）
-          path: android/app/build/outputs/apk/release/api-quota-helper-${{ needs.extract-version.outputs.version }}.apk
+          path: android/app/build/outputs/apk/release/ApiQuotaHelper--arm64-v8a--v${{ needs.extract-version.outputs.version }}.apk
 
   # --------------------------------------------------------
   # 作业4: create-tag
@@ -232,7 +232,7 @@ jobs:
           # Release 的标题
           name: Release ${{ needs.extract-version.outputs.tag }}
           # 随 Release 一起发布的文件
-          files: release/api-quota-helper-${{ needs.extract-version.outputs.version }}.apk
+          files: release/ApiQuotaHelper--arm64-v8a--v${{ needs.extract-version.outputs.version }}.apk
           # 是否为草稿（false = 直接发布）
           draft: false
           # 是否为预发布版本
