@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // 当前页面状态：main（主页面）/ settings（设置页）/ logs（日志页）/ install_guide（安装指引页）
+                    // 当前页面状态：main（主页面）/ settings（设置页）/ logs（日志页）
                     var currentScreen by remember { mutableStateOf("main") }
 
                     // 处理返回键
@@ -62,7 +62,6 @@ class MainActivity : ComponentActivity() {
                             }
                             "settings" -> currentScreen = "main"
                             "logs" -> currentScreen = "settings"
-                            "install_guide" -> currentScreen = "settings"
                         }
                     }
 
@@ -144,28 +143,6 @@ class MainActivity : ComponentActivity() {
                                         )
                                     )
                                 }
-                                "install_guide" -> {
-                                    // 从右侧滑入 + 淡入淡出
-                                    (slideInHorizontally(
-                                        animationSpec = tween(duration, easing = easing),
-                                        initialOffsetX = { it }
-                                    ) + fadeIn(
-                                        animationSpec = tween(duration, easing = easing)
-                                    ) + scaleIn(
-                                        animationSpec = tween(duration, easing = easing),
-                                        initialScale = 0.9f
-                                    )).togetherWith(
-                                        slideOutHorizontally(
-                                            animationSpec = tween(duration, easing = easing),
-                                            targetOffsetX = { -it / 3 }
-                                        ) + fadeOut(
-                                            animationSpec = tween(duration, easing = easing)
-                                        ) + scaleOut(
-                                            animationSpec = tween(duration, easing = easing),
-                                            targetScale = 0.95f
-                                        )
-                                    )
-                                }
                                 else -> fadeIn() togetherWith fadeOut()
                             }
                         },
@@ -194,15 +171,11 @@ class MainActivity : ComponentActivity() {
                                     onDarkModeChange = { viewModel.updateDarkMode(it) },
                                     onRefreshIntervalChange = { viewModel.updateRefreshInterval(it) },
                                     onBack = { currentScreen = "main" },
-                                    onShowLogs = { currentScreen = "logs" },
-                                    onNavigateToInstallGuide = { currentScreen = "install_guide" }
+                                    onShowLogs = { currentScreen = "logs" }
                                 )
                             }
                             "logs" -> {
                                 LogScreen(onBack = { currentScreen = "settings" })
-                            }
-                            "install_guide" -> {
-                                InstallGuideScreen(onBack = { currentScreen = "settings" })
                             }
                         }
                     }
