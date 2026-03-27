@@ -1,9 +1,9 @@
 {
   "build": {
-    "beforeBuildCommand": "npm run build",
-    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "cd $HOME/.openclaw/workspace/api_quota_helper/web-vue && npm run build",
+    "beforeDevCommand": "cd $HOME/.openclaw/workspace/api_quota_helper/web-vue && npm run dev",
     "devPath": "http://localhost:5173",
-    "distDir": "../dist"
+    "distDir": "../web-vue/dist"
   },
   "package": {
     "productName": "API额度助手",
