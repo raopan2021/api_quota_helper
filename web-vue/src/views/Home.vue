@@ -116,12 +116,14 @@ function refreshAccount(acc) {
 function percent(acc) {
   const d = data[acc.id];
   if (!d || !d.amount) return 0;
-  return Math.min(100, (d.amountUsed / d.amount) * 100);
+  // 剩余百分比 = (剩余额度 / 总额度) * 100
+  return Math.min(100, (d.remaining / d.amount) * 100);
 }
 
 function quotaColor(acc) {
   const p = percent(acc);
   if (refreshing.value) return '#9E9E9E';
+  // 剩余越多越绿，越少越红
   if (p > 50) return '#4CAF50';
   if (p > 20) return '#FFC107';
   return '#F44336';

@@ -1,6 +1,8 @@
 import axios from 'axios'
 
-const API_BASE = '/api'
+const API_BASE = navigator.userAgent.includes('Tauri')
+  ? 'http://v2api.aicodee.com'
+  : '/api'
 
 export async function queryQuota(username, token) {
   try {
