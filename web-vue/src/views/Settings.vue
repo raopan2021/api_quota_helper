@@ -67,7 +67,7 @@
         </div>
         <div class="flex justify-start">
           <span class="min-w-24">开源地址</span>
-          <a href="https://github.com/raopan/api_quota_helper" target="_blank" style="color: var(--color-primary)">github.com/raopan/api_quota_helper</a>
+          <a href="https://github.com/raopan2021/api_quota_helper" target="_blank" style="color: var(--color-primary)">github.com/raopan2021/api_quota_helper</a>
         </div>
       </div>
       <div class="flex justify-end">
