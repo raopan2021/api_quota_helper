@@ -1,7 +1,7 @@
 {
   "build": {
-    "beforeBuildCommand": "cd $HOME/.openclaw/workspace/api_quota_helper/web-vue && npm run build",
-    "beforeDevCommand": "cd $HOME/.openclaw/workspace/api_quota_helper/web-vue && npm run dev",
+    "beforeBuildCommand": "echo skip",
+    "beforeDevCommand": "echo skip",
     "devPath": "http://localhost:5173",
     "distDir": "../web-vue/dist"
   },
