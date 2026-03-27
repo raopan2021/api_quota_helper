@@ -1,0 +1,5 @@
+[env]
+PKG_CONFIG_PATH = "/usr/lib/x86_64-linux-gnu/pkgconfig:/tmp/tauri-dev3/usr/lib/x86_64-linux-gnu/pkgconfig"
+LD_LIBRARY_PATH = "/tmp/tauri-dev3/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu"
+LIBRARY_PATH = "/tmp/tauri-dev3/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu"
+PKG_CONFIG_ALLOW_SYSTEM_CFLAGS = "1"
