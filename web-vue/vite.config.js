@@ -13,6 +13,7 @@ export default defineConfig({
     }),
     vue(),
   ],
+  envDir: '../',
   server: {
     proxy: {
       '/api': {

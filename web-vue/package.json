@@ -11,6 +11,7 @@
   "dependencies": {
     "@tauri-apps/api": "^1.6.0",
     "axios": "^1.13.6",
+    "dayjs": "^1.11.20",
     "pinia": "^3.0.4",
     "unplugin-vue-components": "^31.0.0",
     "vant": "^4.9.22",
@@ -21,6 +22,7 @@
     "@unocss/preset-wind": "^66.6.7",
     "@unocss/reset": "^66.6.7",
     "@vitejs/plugin-vue": "^6.0.5",
+    "sass": "^1.98.0",
     "unocss": "^66.6.7",
     "vite": "^8.0.1"
   }

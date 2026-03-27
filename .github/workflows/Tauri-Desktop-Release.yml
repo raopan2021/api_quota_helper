@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  APP_VERSION: ${{ vars.APP_VERSION || '1.1.1' }}
+  APP_VERSION: ${{ vars.VITE_APP_VERSION || '1.1.1' }}
 
 jobs:
   # ==========================================
@@ -46,7 +46,7 @@ jobs:
 
       - name: 统一版本号
         run: |
-          APP_VER="${{ env.APP_VERSION }}"
+          APP_VER="${{ env.VITE_APP_VERSION }}"
           echo "构建版本: $APP_VER"
           sed -i "s/^version = \".*\"/version = \"$APP_VER\"/" tauri/Cargo.toml
           sed -i "s/^\s*\"version\": \".*\"/    \"version\": \"$APP_VER\"/" tauri/tauri.conf.json
@@ -62,7 +62,7 @@ jobs:
       - name: 上传 Linux 构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-linux-${{ env.APP_VERSION }}
+          name: tauri-linux-${{ env.VITE_APP_VERSION }}
           path: |
             tauri/target/release/bundle/deb/*.deb
             tauri/target/release/bundle/rpm/*.rpm
@@ -85,7 +85,7 @@ jobs:
       - name: 统一版本号
         shell: bash
         run: |
-          APP_VER="${{ env.APP_VERSION }}"
+          APP_VER="${{ env.VITE_APP_VERSION }}"
           echo "构建版本: $APP_VER"
           sed -i "s/^version = \".*\"/version = \"$APP_VER\"/" tauri/Cargo.toml
           sed -i "s/^\s*\"version\": \".*\"/    \"version\": \"$APP_VER\"/" tauri/tauri.conf.json
@@ -109,6 +109,6 @@ jobs:
       - name: 上传 Windows 构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-windows-${{ env.APP_VERSION }}
+          name: tauri-windows-${{ env.VITE_APP_VERSION }}
           path: |
             tauri/target/release/api-quota-helper.exe
