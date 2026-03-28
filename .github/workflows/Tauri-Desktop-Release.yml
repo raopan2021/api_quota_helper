@@ -48,8 +48,10 @@ jobs:
         run: |
           APP_VER="${{ env.VITE_APP_VERSION }}"
           echo "构建版本: $APP_VER"
-          sed -i "s/^version = \".*\"/version = \"$APP_VER\"/" tauri/Cargo.toml
-          sed -i "s/^\s*\"version\": \".*\"/    \"version\": \"$APP_VER\"/" tauri/tauri.conf.json
+          sed -i '/^\[package\]/,/^[^v]/ { s/^version = ".*"/version = "'"$APP_VER"'"/; }' tauri/Cargo.toml
+          sed -i 's/("version": )"[^"]*"/\1"'"$APP_VER"'"/' tauri/tauri.conf.json
+          echo "=== Cargo.toml ===" && grep '^version' tauri/Cargo.toml
+          echo "=== tauri.conf.json ===" && grep '"version"' tauri/tauri.conf.json
 
       - name: 构建前端
         run: |
@@ -87,8 +89,10 @@ jobs:
         run: |
           APP_VER="${{ env.VITE_APP_VERSION }}"
           echo "构建版本: $APP_VER"
-          sed -i "s/^version = \".*\"/version = \"$APP_VER\"/" tauri/Cargo.toml
-          sed -i "s/^\s*\"version\": \".*\"/    \"version\": \"$APP_VER\"/" tauri/tauri.conf.json
+          sed -i '/^\[package\]/,/^[^v]/ { s/^version = ".*"/version = "'"$APP_VER"'"/; }' tauri/Cargo.toml
+          sed -i 's/("version": )"[^"]*"/\1"'"$APP_VER"'"/' tauri/tauri.conf.json
+          echo "=== Cargo.toml ===" && grep '^version' tauri/Cargo.toml
+          echo "=== tauri.conf.json ===" && grep '"version"' tauri/tauri.conf.json
 
       - name: 构建前端
         shell: bash
@@ -103,7 +107,8 @@ jobs:
         shell: bash
         run: |
           sed -i 's|"beforeBuildCommand": "echo skip"|"beforeBuildCommand": "echo skip"|' tauri/tauri.conf.json
-          sed -i 's|"distDir": ".*"|"distDir": "../web-vue/dist"|' tauri/tauri.conf.json
+          sed -i 's|"distDir": "[^"]*"|"distDir": "../web-vue/dist"|' tauri/tauri.conf.json
+          echo "=== build section ===" && sed -n '3,6p' tauri/tauri.conf.json
 
       - name: 构建 Tauri (Windows 单文件)
         shell: bash
