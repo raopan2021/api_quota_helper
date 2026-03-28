@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - ".github/workflows/Tauri-Desktop.yml"
+      - ".github/workflows/Tauri-Desktop-Release.yml"
       - "tauri/**"
       - "web-vue/**"
 
