@@ -46,12 +46,40 @@ jobs:
 
       - name: 统一版本号
         run: |
-          APP_VER="${{ env.VITE_APP_VERSION }}"
-          echo "构建版本: $APP_VER"
-          sed -i '/^\[package\]/,/^[^v]/ { s/^version = ".*"/version = "'"$APP_VER"'"/; }' tauri/Cargo.toml
-          sed -i 's/("version": )"[^"]*"/\1"'"$APP_VER"'"/' tauri/tauri.conf.json
-          echo "=== Cargo.toml ===" && grep '^version' tauri/Cargo.toml
-          echo "=== tauri.conf.json ===" && grep '"version"' tauri/tauri.conf.json
+          python -c "
+          import re, json, os
+          app_ver = '${{ env.VITE_APP_VERSION }}'
+          print(f'设置版本: {app_ver}')
+
+          # Cargo.toml
+          with open('tauri/Cargo.toml', 'r', encoding='utf-8') as f:
+              content = f.read()
+          in_package = False
+          lines = []
+          for line in content.splitlines():
+              if line.strip() == '[package]':
+                  in_package = True
+              elif in_package and line.startswith('version '):
+                  line = f'version = \"{app_ver}\"'
+                  in_package = False
+              lines.append(line)
+          with open('tauri/Cargo.toml', 'w', encoding='utf-8') as f:
+              f.write('\n'.join(lines) + '\n')
+
+          # tauri.conf.json
+          with open('tauri/tauri.conf.json', 'r', encoding='utf-8') as f:
+              conf = json.load(f)
+          conf['package']['version'] = app_ver
+          with open('tauri/tauri.conf.json', 'w', encoding='utf-8') as f:
+              json.dump(conf, f, indent=4)
+
+          print('=== Cargo.toml ===')
+          with open('tauri/Cargo.toml', 'r') as f:
+              for line in f:
+                  if line.startswith('version'):
+                      print(line.rstrip())
+          print('=== tauri.conf.json ===')
+          print(f'package.version = {conf[\"package\"][\"version\"]}')"
 
       - name: 构建前端
         run: |
@@ -85,14 +113,41 @@ jobs:
         run: cargo install tauri-cli --version "^1"
 
       - name: 统一版本号
-        shell: bash
         run: |
-          APP_VER="${{ env.VITE_APP_VERSION }}"
-          echo "构建版本: $APP_VER"
-          sed -i '/^\[package\]/,/^[^v]/ { s/^version = ".*"/version = "'"$APP_VER"'"/; }' tauri/Cargo.toml
-          sed -i 's/("version": )"[^"]*"/\1"'"$APP_VER"'"/' tauri/tauri.conf.json
-          echo "=== Cargo.toml ===" && grep '^version' tauri/Cargo.toml
-          echo "=== tauri.conf.json ===" && grep '"version"' tauri/tauri.conf.json
+          python -c "
+          import re, json, os
+          app_ver = '${{ env.VITE_APP_VERSION }}'
+          print(f'设置版本: {app_ver}')
+
+          # Cargo.toml
+          with open('tauri/Cargo.toml', 'r', encoding='utf-8') as f:
+              content = f.read()
+          in_package = False
+          lines = []
+          for line in content.splitlines():
+              if line.strip() == '[package]':
+                  in_package = True
+              elif in_package and line.startswith('version '):
+                  line = f'version = \"{app_ver}\"'
+                  in_package = False
+              lines.append(line)
+          with open('tauri/Cargo.toml', 'w', encoding='utf-8') as f:
+              f.write('\n'.join(lines) + '\n')
+
+          # tauri.conf.json
+          with open('tauri/tauri.conf.json', 'r', encoding='utf-8') as f:
+              conf = json.load(f)
+          conf['package']['version'] = app_ver
+          with open('tauri/tauri.conf.json', 'w', encoding='utf-8') as f:
+              json.dump(conf, f, indent=4)
+
+          print('=== Cargo.toml ===')
+          with open('tauri/Cargo.toml', 'r') as f:
+              for line in f:
+                  if line.startswith('version'):
+                      print(line.rstrip())
+          print('=== tauri.conf.json ===')
+          print(f'package.version = {conf[\"package\"][\"version\"]}')"
 
       - name: 构建前端
         shell: bash
