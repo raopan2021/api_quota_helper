@@ -93,7 +93,10 @@ jobs:
       - name: 构建前端
         shell: bash
         run: |
-          cd web-vue; npm ci; npm run build
+          cd web-vue
+          rm -rf node_modules package-lock.json
+          npm ci
+          npm run build
 
       - name: 修复 tauri.conf.json 路径
         shell: bash
