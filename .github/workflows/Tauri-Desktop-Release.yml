@@ -95,7 +95,8 @@ jobs:
         run: |
           cd web-vue
           rm -rf node_modules package-lock.json
-          npm ci
+          npm cache clean --force
+          npm install
           npm run build
 
       - name: 修复 tauri.conf.json 路径
