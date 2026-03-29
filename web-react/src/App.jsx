@@ -2,13 +2,14 @@
  * App 根组件
  * API 额度助手 - React 版本
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { AccountsProvider, useAccounts } from './stores/useAccounts.jsx';
 import { LogsProvider, useLogs } from './stores/useLogs.jsx';
 import { SettingsProvider, useSettings } from './stores/useSettings.jsx';
 import Header from './components/Header.jsx';
 import SlidingPanel from './components/SlidingPanel.jsx';
 import AddEditModal from './components/AddEditModal.jsx';
+import FloatingButtons from './components/FloatingButtons.jsx';
 import Home from './pages/Home.jsx';
 import Logs from './pages/Logs.jsx';
 import Settings from './pages/Settings.jsx';
@@ -16,7 +17,6 @@ import Settings from './pages/Settings.jsx';
 function AppContent() {
   const { settings } = useSettings();
   const { accounts, addAccount, updateAccount, deleteAccount, refreshAll, accountData } = useAccounts();
-  const { log: addLog } = useLogs();
 
   const [showLogs, setShowLogs] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -101,7 +101,7 @@ function AppContent() {
       <main style={{
         flex: 1,
         overflowY: 'auto',
-        paddingBottom: '80px',
+        paddingBottom: '140px', // 为浮动按钮留出空间
         overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
       }}>
@@ -138,6 +138,13 @@ function AppContent() {
         editing={editing}
         onClose={closeAdd}
         onSave={handleSave}
+      />
+
+      {/* 浮动操作按钮 */}
+      <FloatingButtons
+        onAdd={openAdd}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
       />
     </div>
   );
