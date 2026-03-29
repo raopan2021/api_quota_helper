@@ -1,0 +1,223 @@
+/**
+ * 主题样式
+ * 定义亮色/暗色模式的 CSS 变量
+ */
+
+/* 亮色模式变量 */
+:root {
+  /* 主题色 */
+  --color-primary: #1976D2;
+  --color-success: #4CAF50;
+  --color-warning: #FFC107;
+  --color-danger: #F44336;
+  --color-muted: #9E9E9E;
+  --color-accent: #AA3BFF;
+
+  /* 背景色 */
+  --color-bg: #F5F5F5;
+  --color-bg-card: #FFFFFF;
+  --color-bg-hover: rgba(0, 0, 0, 0.04);
+
+  /* 边框色 */
+  --color-border: #E5E4E7;
+
+  /* 文字色 */
+  --color-text: #333333;
+  --color-text-muted: #888888;
+
+  /* 进度条 */
+  --color-progress-track: #EEEEEE;
+
+  /* 灰色系 */
+  --color-gray-50: #FAFAFA;
+  --color-gray-100: #F3F4F6;
+  --color-gray-200: #E5E7EB;
+  --color-gray-300: #D1D5DB;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #6B7280;
+  --color-gray-600: #4B5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1F2937;
+  --color-gray-900: #111827;
+
+  /* 滚动条 */
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+
+  /* 按钮 */
+  --color-btn-bg: var(--color-bg-card);
+  --color-btn-hover-bg: var(--color-gray-100);
+
+  /* 过渡 */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* 暗色模式变量 */
+.dark {
+  --color-bg: #1A1A1A;
+  --color-bg-card: #2A2A2A;
+  --color-bg-hover: rgba(255, 255, 255, 0.04);
+  --color-border: #444455;
+
+  --color-text: #E0E0E0;
+  --color-text-muted: #999999;
+
+  --color-progress-track: #333333;
+
+  --color-gray-50: #1a1a1a;
+  --color-gray-100: #252535;
+  --color-gray-200: #303045;
+  --color-gray-300: #404060;
+  --color-gray-400: #8888AA;
+  --color-gray-500: #9999BB;
+  --color-gray-600: #AAAACC;
+
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+
+  --color-btn-bg: var(--color-bg-card);
+  --color-btn-hover-bg: #3a3a50;
+}
+
+/* 全局样式 */
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* 通用卡片样式 */
+.card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  transition: background-color var(--transition-normal), border-color var(--transition-normal);
+}
+
+/* 通用按钮样式 */
+.btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-btn-bg);
+  color: var(--color-text);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn:hover {
+  background: var(--color-btn-hover-bg);
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+/* 通用输入框样式 */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: var(--color-gray-50);
+  color: var(--color-text);
+  outline: none;
+  transition: border-color var(--transition-fast), background-color var(--transition-normal);
+}
+
+.input:focus {
+  border-color: var(--color-primary);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* 动画 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 动画类 */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.25s ease-out;
+}
+
+.animate-loading {
+  animation: loading 1.5s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}

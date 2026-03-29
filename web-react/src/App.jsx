@@ -91,6 +91,7 @@ function AppContent() {
       {/* 顶部导航 */}
       <Header
         refreshing={refreshing}
+        onOpenAdd={openAdd}
         onOpenLogs={() => setShowLogs(true)}
         onOpenSettings={() => setShowSettings(true)}
         onRefresh={handleRefresh}

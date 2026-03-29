@@ -1,19 +1,18 @@
 /**
  * Header 组件
- * 顶部导航栏，包含标题和操作按钮
+ * 顶部导航栏
  */
 import { useSettings } from '../stores/useSettings.jsx';
 
 export default function Header({ refreshing, onOpenLogs, onOpenSettings, onRefresh }) {
   const { settings } = useSettings();
-  const darkMode = settings.darkMode;
 
   const headerStyle = {
     position: 'sticky',
     top: 0,
     zIndex: 100,
-    background: darkMode ? '#1a1a1a' : '#ffffff',
-    borderBottom: `1px solid ${darkMode ? '#333' : '#eee'}`,
+    background: 'var(--color-bg-card)',
+    borderBottom: '1px solid var(--color-border)',
     paddingTop: 'max(12px, env(safe-area-inset-top))',
     paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
     paddingLeft: '16px',
@@ -24,45 +23,85 @@ export default function Header({ refreshing, onOpenLogs, onOpenSettings, onRefre
     padding: '4px 10px',
     fontSize: '13px',
     borderRadius: '6px',
-    border: `1px solid ${darkMode ? '#444' : '#ddd'}`,
-    background: darkMode ? '#2a2a2a' : '#fff',
-    color: darkMode ? '#e0e0e0' : '#333',
+    border: '1px solid var(--color-border)',
+    background: 'var(--color-btn-bg)',
+    color: 'var(--color-text)',
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: 'all 0.15s ease',
   };
 
-  const refreshBtnStyle = {
+  const primaryBtnStyle = {
     ...btnStyle,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '32px',
+    background: 'var(--color-primary)',
+    borderColor: 'var(--color-primary)',
+    color: '#fff',
   };
 
   return (
     <header style={headerStyle}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
-        <span style={{ fontWeight: 'bold', fontSize: '16px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        height: '100%',
+      }}>
+        <span style={{
+          fontWeight: 'bold',
+          fontSize: '16px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          color: 'var(--color-text)',
+        }}>
           API 额度助手
         </span>
+
         <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-          <button style={btnStyle} onClick={onOpenLogs}>日志</button>
-          <button style={btnStyle} onClick={onOpenSettings}>设置</button>
-          <button style={refreshBtnStyle} onClick={onRefresh} disabled={refreshing}>
+          {/* 添加按钮 - 主要操作 */}
+          <button
+            style={primaryBtnStyle}
+            onClick={onOpenAdd}
+          >
+            + 添加
+          </button>
+
+          {/* 日志按钮 */}
+          <button
+            style={btnStyle}
+            onClick={onOpenLogs}
+          >
+            日志
+          </button>
+
+          {/* 设置按钮 */}
+          <button
+            style={btnStyle}
+            onClick={onOpenSettings}
+          >
+            设置
+          </button>
+
+          {/* 刷新按钮 */}
+          <button
+            style={{
+              ...btnStyle,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: '32px',
+            }}
+            onClick={onRefresh}
+            disabled={refreshing}
+          >
             <span style={{
               display: 'inline-block',
               animation: refreshing ? 'spin 1s linear infinite' : 'none',
-            }}>⟳</span>
+            }}>
+              ⟳
+            </span>
           </button>
         </div>
       </div>
-      {/* 旋转动画 */}
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </header>
   );
 }

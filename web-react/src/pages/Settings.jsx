@@ -1,4 +1,8 @@
-import { useState } from 'react';
+/**
+ * Settings 页面
+ * 设置页面：显示设置、定时刷新、关于
+ */
+import { useState, useEffect } from 'react';
 import { useSettings } from '../stores/useSettings.jsx';
 import { checkUpdate } from '../services/api.js';
 
@@ -8,12 +12,16 @@ export default function Settings() {
   const [updateError, setUpdateError] = useState('');
   const [updateInfo, setUpdateInfo] = useState(null);
 
-  const bg = settings.darkMode ? '#1a1a1a' : '#f5f5f5';
-  const cardBg = settings.darkMode ? '#2a2a2a' : '#fff';
-  const textColor = settings.darkMode ? '#e0e0e0' : '#333';
-  const borderColor = settings.darkMode ? '#333' : '#eee';
-  const metaColor = settings.darkMode ? '#888' : '#888';
+  // 同步 darkMode 到 html 元素
+  useEffect(() => {
+    if (settings.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [settings.darkMode]);
 
+  // 检查更新
   async function handleCheckUpdate() {
     setChecking(true);
     setUpdateError('');
@@ -28,27 +36,35 @@ export default function Settings() {
   }
 
   return (
-    <div style={{ padding: '16px 0', background: bg, minHeight: '100vh' }}>
+    <div className="settings-wrap" style={{
+      padding: '16px 0',
+      background: 'var(--color-bg)',
+      minHeight: '100vh',
+    }}>
       {/* 显示设置 */}
-      <div style={{ ...sectionStyle, background: cardBg }}>
-        <div style={{ ...sectionTitleStyle, color: textColor }}>显示</div>
+      <div className="card" style={sectionStyle}>
+        <div style={sectionTitleStyle}>显示</div>
 
         {/* 卡片大小 */}
         <div style={settingRowStyle}>
-          <span style={{ color: textColor }}>卡片大小</span>
-          <div style={pickerGroupStyle}>
-            {['small', 'medium', 'large'].map(size => (
+          <span style={{ color: 'var(--color-text)' }}>卡片大小</span>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {[
+              { key: 'small', label: '小' },
+              { key: 'medium', label: '中' },
+              { key: 'large', label: '大' },
+            ].map(item => (
               <button
-                key={size}
+                key={item.key}
                 style={{
                   ...pickerBtnStyle,
-                  background: settings.cardSize === size ? '#1677ff' : 'transparent',
-                  color: settings.cardSize === size ? '#fff' : textColor,
-                  borderColor: settings.cardSize === size ? '#1677ff' : borderColor,
+                  background: settings.cardSize === item.key ? 'var(--color-primary)' : 'transparent',
+                  color: settings.cardSize === item.key ? '#fff' : 'var(--color-text)',
+                  borderColor: settings.cardSize === item.key ? 'var(--color-primary)' : 'var(--color-border)',
                 }}
-                onClick={() => save({ cardSize: size })}
+                onClick={() => save({ cardSize: item.key })}
               >
-                {size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
+                {item.label}
               </button>
             ))}
           </div>
@@ -56,11 +72,11 @@ export default function Settings() {
 
         {/* 深色模式 */}
         <div style={settingRowStyle}>
-          <span style={{ color: textColor }}>深色模式</span>
+          <span style={{ color: 'var(--color-text)' }}>深色模式</span>
           <div
             style={{
               ...toggleStyle,
-              background: settings.darkMode ? '#1677ff' : '#ccc',
+              background: settings.darkMode ? 'var(--color-primary)' : '#ccc',
             }}
             onClick={() => save({ darkMode: !settings.darkMode })}
           >
@@ -72,30 +88,65 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* 刷新间隔 */}
-      <div style={{ ...sectionStyle, background: cardBg }}>
-        <div style={{ ...sectionTitleStyle, color: textColor }}>定时刷新</div>
-        <div style={refreshIntervalStyle}>
+      {/* 定时刷新 */}
+      <div className="card" style={sectionStyle}>
+        <div style={sectionTitleStyle}>定时刷新</div>
+        <div style={{ padding: '0 16px 16px' }}>
           <IntervalPicker
             value={settings.refreshIntervalSeconds || 300}
             onChange={v => save({ refreshIntervalSeconds: v })}
-            darkMode={settings.darkMode}
           />
         </div>
       </div>
 
-      {/* 版本更新 */}
-      <div style={{ ...sectionStyle, background: cardBg }}>
-        <div style={{ ...sectionTitleStyle, color: textColor }}>关于</div>
-        <div style={{ padding: '0 16px 16px' }}>
-          <button style={btnStyle} onClick={handleCheckUpdate} disabled={checking}>
+      {/* 关于 */}
+      <div className="card" style={sectionStyle}>
+        <div style={sectionTitleStyle}>关于</div>
+        <div style={{ padding: '0 16px 16px', color: 'var(--color-text)', fontSize: '13px', lineHeight: 1.8 }}>
+          <div style={{ marginBottom: '12px' }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>版本: </span>
+            <strong>v1.0.0</strong>
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>作者: </span>
+            <strong>raopan</strong>
+          </div>
+          <div style={{ marginBottom: '16px' }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>开源: </span>
+            <a
+              href="https://github.com/raopan2021/api_quota_helper"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              github.com/raopan2021/api_quota_helper
+            </a>
+          </div>
+          <button
+            style={btnStyle}
+            onClick={handleCheckUpdate}
+            disabled={checking}
+          >
             {checking ? '检查中...' : '检查更新'}
           </button>
-          {updateError && <p style={{ color: '#F44336', fontSize: '13px', marginTop: '8px' }}>{updateError}</p>}
+          {updateError && (
+            <p style={{ color: 'var(--color-danger)', fontSize: '13px', marginTop: '8px' }}>
+              {updateError}
+            </p>
+          )}
           {updateInfo && (
             <div style={{ marginTop: '8px' }}>
-              <p style={{ fontSize: '13px', color: textColor }}>发现新版本: <strong>{updateInfo.version}</strong></p>
-              <a href={updateInfo.downloadUrl} target="_blank" rel="noreferrer" style={{ color: '#1677ff', fontSize: '13px' }}>点击下载</a>
+              <p style={{ fontSize: '13px', color: 'var(--color-text)' }}>
+                发现新版本: <strong>{updateInfo.version}</strong>
+              </p>
+              <a
+                href={updateInfo.downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: 'var(--color-primary)', fontSize: '13px' }}
+              >
+                点击下载 →
+              </a>
             </div>
           )}
         </div>
@@ -104,7 +155,8 @@ export default function Settings() {
   );
 }
 
-function IntervalPicker({ value, onChange, darkMode }) {
+// 时间间隔选择器
+function IntervalPicker({ value, onChange }) {
   const totalSeconds = value || 300;
   const [hours, setHours] = useState(Math.floor(totalSeconds / 3600));
   const [minutes, setMinutes] = useState(Math.floor((totalSeconds % 3600) / 60));
@@ -115,47 +167,51 @@ function IntervalPicker({ value, onChange, darkMode }) {
     if (total > 0) onChange(total);
   }
 
-  const borderColor = darkMode ? '#444' : '#ddd';
-  const textColor = darkMode ? '#e0e0e0' : '#333';
-  const bgColor = darkMode ? '#1a1a1a' : '#fff';
-
   return (
-    <div style={intervalContainerStyle}>
-      <div style={intervalUnitStyle}>
-        <div style={{ ...intervalLabelStyle, color: textColor }}>时</div>
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '8px',
+    }}>
+      {/* 小时 */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>时</span>
         <select
           value={hours}
           onChange={e => { setHours(parseInt(e.target.value)); }}
           onBlur={handleChange}
-          style={{ ...selectStyle, borderColor, color: textColor, background: bgColor }}
+          style={selectStyle}
         >
           {Array.from({ length: 24 }, (_, i) => (
             <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
           ))}
         </select>
       </div>
-      <span style={{ color: textColor, fontSize: '18px', fontWeight: 'bold' }}>:</span>
-      <div style={intervalUnitStyle}>
-        <div style={{ ...intervalLabelStyle, color: textColor }}>分</div>
+      <span style={{ color: 'var(--color-text)', fontSize: '18px', fontWeight: 'bold', marginTop: '16px' }}>:</span>
+      {/* 分钟 */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>分</span>
         <select
           value={minutes}
           onChange={e => { setMinutes(parseInt(e.target.value)); }}
           onBlur={handleChange}
-          style={{ ...selectStyle, borderColor, color: textColor, background: bgColor }}
+          style={selectStyle}
         >
           {Array.from({ length: 60 }, (_, i) => (
             <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
           ))}
         </select>
       </div>
-      <span style={{ color: textColor, fontSize: '18px', fontWeight: 'bold' }}>:</span>
-      <div style={intervalUnitStyle}>
-        <div style={{ ...intervalLabelStyle, color: textColor }}>秒</div>
+      <span style={{ color: 'var(--color-text)', fontSize: '18px', fontWeight: 'bold', marginTop: '16px' }}>:</span>
+      {/* 秒 */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '4px' }}>秒</span>
         <select
           value={seconds}
           onChange={e => { setSeconds(parseInt(e.target.value)); }}
           onBlur={handleChange}
-          style={{ ...selectStyle, borderColor, color: textColor, background: bgColor }}
+          style={selectStyle}
         >
           {Array.from({ length: 60 }, (_, i) => (
             <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
@@ -170,35 +226,31 @@ const sectionStyle = {
   maxWidth: '480px',
   margin: '0 auto 12px',
   padding: '16px',
-  borderRadius: '12px',
 };
 
 const sectionTitleStyle = {
   fontWeight: 'bold',
   marginBottom: '12px',
   fontSize: '15px',
+  color: 'var(--color-text)',
 };
 
 const settingRowStyle = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '8px 0',
-  borderBottom: '1px solid #f0f0f0',
-};
-
-const pickerGroupStyle = {
-  display: 'flex',
-  gap: '4px',
+  padding: '10px 0',
+  borderBottom: '1px solid var(--color-border)',
 };
 
 const pickerBtnStyle = {
   padding: '6px 14px',
-  border: '1px solid #ddd',
+  border: '1px solid var(--color-border)',
   borderRadius: '6px',
   background: 'transparent',
   cursor: 'pointer',
   fontSize: '13px',
+  transition: 'all 0.15s ease',
 };
 
 const toggleStyle = {
@@ -221,45 +273,26 @@ const toggleKnobStyle = {
   boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
 };
 
-const refreshIntervalStyle = {
-  padding: '0 16px 16px',
-};
-
-const intervalContainerStyle = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '8px',
-};
-
-const intervalUnitStyle = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-};
-
-const intervalLabelStyle = {
-  fontSize: '12px',
-  marginBottom: '4px',
-};
-
 const selectStyle = {
   width: '70px',
   height: '36px',
   borderRadius: '8px',
-  border: '1px solid #ddd',
+  border: '1px solid var(--color-border)',
   textAlign: 'center',
   fontSize: '16px',
   cursor: 'pointer',
   appearance: 'none',
   WebkitAppearance: 'none',
+  background: 'var(--color-bg-card)',
+  color: 'var(--color-text)',
 };
 
 const btnStyle = {
   padding: '8px 16px',
   borderRadius: '8px',
-  border: '1px solid #d9d9d9',
-  background: '#fff',
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-btn-bg)',
   cursor: 'pointer',
   fontSize: '14px',
+  color: 'var(--color-text)',
 };
