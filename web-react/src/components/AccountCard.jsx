@@ -29,6 +29,47 @@ function useCountdown(resetTime) {
   }, [resetTime, tick]);
 }
 
+// 格式化下次重置时间
+function formatNextResetLabel(resetTime) {
+  if (!resetTime) return '';
+  try {
+    const reset = dayjs(resetTime);
+    const isTomorrow = reset.isAfter(dayjs().endOf('day'));
+    const prefix = isTomorrow ? '明天 ' : '';
+    const h = reset.hour();
+    const m = reset.minute();
+    const s = reset.second();
+    const period = h < 6 ? '凌晨' : h < 12 ? '早上' : h < 18 ? '下午' : '晚上';
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${prefix}${period}${hour12}点${m}分${s}秒`;
+  } catch {
+    return '';
+  }
+}
+
+// 格式化相对时间
+function formatLastUpdated(updatedAt, refreshInterval) {
+  if (!updatedAt) return '';
+  try {
+    const intervalSec = refreshInterval || 300;
+    return dayjs(updatedAt).add(intervalSec, 'second').fromNow();
+  } catch {
+    return '';
+  }
+}
+
+// 上次更新时间 hook
+function useLastUpdated(updatedAt, refreshInterval) {
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 30000); // 每30秒更新
+    return () => clearInterval(timer);
+  }, []);
+
+  return useMemo(() => formatLastUpdated(updatedAt, refreshInterval), [updatedAt, refreshInterval, tick]);
+}
+
 export default function AccountCard({ account, data: d, refreshing, onRefresh, onEdit, onDelete }) {
   const { settings } = useSettings();
   const darkMode = settings.darkMode;
@@ -64,6 +105,12 @@ export default function AccountCard({ account, data: d, refreshing, onRefresh, o
 
   // 倒计时
   const countdown = useCountdown(d?.nextResetTime);
+
+  // 下次重置时间标签
+  const nextResetLabel = useMemo(() => formatNextResetLabel(d?.nextResetTime), [d?.nextResetTime]);
+
+  // 上次更新时间
+  const lastUpdated = useLastUpdated(d?.updatedAt, settings.refreshIntervalSeconds);
 
   // 头像首字母
   const avatarLetter = account.username.charAt(0).toUpperCase();
@@ -243,14 +290,26 @@ export default function AccountCard({ account, data: d, refreshing, onRefresh, o
               }} />
             </div>
 
-            {/* 底部：距重置时间 */}
+            {/* 底部：距重置时间 + 下次重置时间 */}
             <div style={footerRowStyle}>
               {countdown && (
                 <div style={{ fontSize: '12px', color: metaColor }}>
                   距重置: <span style={{ color: '#1976D2', fontWeight: 500 }}>{countdown}</span>
                 </div>
               )}
+              {nextResetLabel && (
+                <div style={{ fontSize: '12px', color: metaColor }}>
+                  下次重置: <span style={{ color: '#1976D2', fontWeight: 500 }}>{nextResetLabel}</span>
+                </div>
+              )}
             </div>
+
+            {/* 上次更新时间 */}
+            {lastUpdated && (
+              <div style={{ fontSize: '11px', color: metaColor, marginTop: '4px' }}>
+                ~ {lastUpdated} 自动更新
+              </div>
+            )}
           </>
         )}
 
